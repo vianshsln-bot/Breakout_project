@@ -7,7 +7,7 @@ from backend.models.scripts_model import Script, ScriptCreate, ScriptUpdate
 def create_script(script_data: ScriptCreate) -> Script:
     """Creates a new script record."""
     try:
-        script_dict = script_data.model_dump()
+        script_dict = script_data.model_dump(mode="json")
         response = supabase.table("Scripts").insert(script_dict).execute()
         return Script(**response.data[0])
     except APIError as e:
@@ -41,7 +41,7 @@ def get_scripts_by_branch_id(branch_id: int) -> List[Script]:
 def update_script(script_id: int, script_data: ScriptUpdate) -> Optional[Script]:
     """Updates an existing script's record."""
     try:
-        update_dict = script_data.model_dump(exclude_unset=True)
+        update_dict = script_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_script_by_id(script_id)
         

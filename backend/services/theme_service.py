@@ -34,7 +34,7 @@ def get_theme_by_id(theme_id: int) -> Optional[Theme]:
 def update_theme(theme_id: int, theme_data: ThemeUpdate) -> Optional[Theme]:
     """Updates an existing theme's record."""
     try:
-        update_dict = theme_data.model_dump(exclude_unset=True)
+        update_dict = theme_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_theme_by_id(theme_id)
 

@@ -41,7 +41,7 @@ def get_calls_by_customer_id(customer_id: int) -> List[Call]:
 def update_call(conv_id: str, call_data: CallUpdate) -> Optional[Call]:
     """Updates an existing call record."""
     try:
-        update_dict = call_data.model_dump(exclude_unset=True)
+        update_dict = call_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_call_by_conv_id(conv_id)
 

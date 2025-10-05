@@ -7,7 +7,7 @@ from backend.models.employee_model import Employee, EmployeeCreate, EmployeeUpda
 def create_employee(employee_data: EmployeeCreate) -> Employee:
     """Creates a new employee record."""
     try:
-        employee_dict = employee_data.model_dump()
+        employee_dict = employee_data.model_dump(mode="json")
         response = supabase.table("Employee").insert(employee_dict).execute()
         return Employee(**response.data[0])
     except APIError as e:
@@ -33,7 +33,7 @@ def get_employee_by_id(employee_id: int) -> Optional[Employee]:
 def update_employee(employee_id: int, employee_data: EmployeeUpdate) -> Optional[Employee]:
     """Updates an existing employee's record."""
     try:
-        update_dict = employee_data.model_dump(exclude_unset=True)
+        update_dict = employee_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_employee_by_id(employee_id)
         

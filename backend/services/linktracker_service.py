@@ -15,7 +15,7 @@ router = APIRouter(
 def create_link_tracker(link_tracker_data: LinkTrackerCreate) -> LinkTracker:
     """Creates a new link tracker record."""
     try:
-        link_tracker_dict = link_tracker_data.model_dump()
+        link_tracker_dict = link_tracker_data.model_dump(mode="json")
         response = supabase.table("Link_Tracker").insert(link_tracker_dict).execute()
         return LinkTracker(**response.data[0])
     except APIError as e:
@@ -41,7 +41,7 @@ def get_link_tracker_by_id(link_id: int) -> Optional[LinkTracker]:
 def update_link_tracker(link_id: int, link_tracker_data: LinkTrackerUpdate) -> Optional[LinkTracker]:
     """Updates an existing link tracker's record."""
     try:
-        update_dict = link_tracker_data.model_dump(exclude_unset=True)
+        update_dict = link_tracker_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_link_tracker_by_id(link_id)
         

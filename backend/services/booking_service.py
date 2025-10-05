@@ -44,7 +44,7 @@ def get_bookings_by_customer_id(customer_id: int) -> List[Booking]:
 def update_booking(booking_id: int, booking_data: BookingUpdate) -> Optional[Booking]:
     """Updates an existing booking's record."""
     try:
-        update_dict = booking_data.model_dump(exclude_unset=True)
+        update_dict = booking_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_booking_by_id(booking_id)
         
