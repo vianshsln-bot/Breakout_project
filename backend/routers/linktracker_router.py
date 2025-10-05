@@ -3,7 +3,7 @@ from postgrest import APIError
 from fastapi import APIRouter, HTTPException, status, Query
 from backend.config.supabase_client import supabase
 from backend.models.linktracker_model import LinkTracker, LinkTrackerCreate, LinkTrackerUpdate
-
+from backend.services import linktracker_service
 
 router = APIRouter(
     prefix="/linktrackers",
