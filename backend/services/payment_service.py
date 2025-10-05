@@ -7,7 +7,7 @@ from backend.models.payment_model import Payment, PaymentCreate, PaymentUpdate, 
 def create_payment(payment_data: PaymentCreate) -> Payment:
     """Creates a new payment record with a 'pending' status."""
     try:
-        payment_dict = payment_data.model_dump()
+        payment_dict = payment_data.model_dump(mode="json")
         # Set the initial status automatically
         payment_dict["Payment_status"] = PaymentStatus.PENDING.value
         response = supabase.table("Payment").insert(payment_dict).execute()
@@ -35,7 +35,7 @@ def get_payment_by_id(payment_id: int) -> Optional[Payment]:
 def update_payment(payment_id: int, payment_data: PaymentUpdate) -> Optional[Payment]:
     """Updates an existing payment's record."""
     try:
-        update_dict = payment_data.model_dump(exclude_unset=True)
+        update_dict = payment_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_payment_by_id(payment_id)
         

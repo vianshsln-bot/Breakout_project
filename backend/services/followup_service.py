@@ -7,7 +7,7 @@ from backend.models.followup_model import FollowUp, FollowUpCreate, FollowUpUpda
 def create_follow_up(follow_up_data: FollowUpCreate) -> FollowUp:
     """Creates a new follow-up record."""
     try:
-        follow_up_dict = follow_up_data.model_dump()
+        follow_up_dict = follow_up_data.model_dump(mode="json")
         response = supabase.table("Follow_up").insert(follow_up_dict).execute()
         return FollowUp(**response.data[0])
     except APIError as e:
@@ -41,7 +41,7 @@ def get_follow_ups_by_lead_id(lead_id: int) -> List[FollowUp]:
 def update_follow_up(follow_up_id: int, follow_up_data: FollowUpUpdate) -> Optional[FollowUp]:
     """Updates an existing follow-up's record."""
     try:
-        update_dict = follow_up_data.model_dump(exclude_unset=True)
+        update_dict = follow_up_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_follow_up_by_id(follow_up_id)
         

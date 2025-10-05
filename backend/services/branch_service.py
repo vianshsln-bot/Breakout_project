@@ -7,7 +7,7 @@ from backend.models.branch_model import Branch, BranchCreate, BranchUpdate
 def create_branch(branch_data: BranchCreate) -> Branch:
     """Creates a new branch record."""
     try:
-        branch_dict = branch_data.model_dump()
+        branch_dict = branch_data.model_dump(mode="json")
         response = supabase.table("Branch").insert(branch_dict).execute()
         return Branch(**response.data[0])
     except APIError as e:
@@ -33,7 +33,7 @@ def get_branch_by_id(branch_id: int) -> Optional[Branch]:
 def update_branch(branch_id: int, branch_data: BranchUpdate) -> Optional[Branch]:
     """Updates an existing branch's record."""
     try:
-        update_dict = branch_data.model_dump(exclude_unset=True)
+        update_dict = branch_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_branch_by_id(branch_id)
         

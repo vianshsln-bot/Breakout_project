@@ -7,7 +7,7 @@ from backend.models.event_model import Event, EventCreate, EventUpdate
 def create_event(event_data: EventCreate) -> Event:
     """Creates a new event record."""
     try:
-        event_dict = event_data.model_dump()
+        event_dict = event_data.model_dump(mode="json")
         response = supabase.table("Events").insert(event_dict).execute()
         return Event(**response.data[0])
     except APIError as e:
@@ -41,7 +41,7 @@ def get_events_by_customer_id(customer_id: int) -> List[Event]:
 def update_event(event_id: int, event_data: EventUpdate) -> Optional[Event]:
     """Updates an existing event's record."""
     try:
-        update_dict = event_data.model_dump(exclude_unset=True)
+        update_dict = event_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_event_by_id(event_id)
         

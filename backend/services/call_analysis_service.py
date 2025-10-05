@@ -7,7 +7,7 @@ from backend.models.call_analysis_model import CallAnalysis, CallAnalysisCreate,
 def create_call_analysis(analysis_data: CallAnalysisCreate) -> CallAnalysis:
     """Creates a new call analysis record."""
     try:
-        analysis_dict = analysis_data.model_dump()
+        analysis_dict = analysis_data.model_dump(mode="json")
         response = supabase.table("Call_analysis").insert(analysis_dict).execute()
         return CallAnalysis(**response.data[0])
     except APIError as e:
@@ -44,7 +44,7 @@ def get_call_analysis_by_conv_id(conv_id: str) -> Optional[CallAnalysis]:
 def update_call_analysis(analysis_id: int, analysis_data: CallAnalysisUpdate) -> Optional[CallAnalysis]:
     """Updates an existing call analysis record."""
     try:
-        update_dict = analysis_data.model_dump(exclude_unset=True)
+        update_dict = analysis_data.model_dump(exclude_unset=True,mode="json")
         if not update_dict:
             return get_call_analysis_by_id(analysis_id)
         

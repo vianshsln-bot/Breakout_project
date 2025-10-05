@@ -7,7 +7,7 @@ from backend.models.consumption_model import Consumption, ConsumptionCreate
 def create_consumption(consumption_data: ConsumptionCreate) -> Consumption:
     """Creates a new consumption log entry."""
     try:
-        consumption_dict = consumption_data.model_dump()
+        consumption_dict = consumption_data.model_dump(mode="json")
         response = supabase.table("consumption").insert(consumption_dict).execute()
         return Consumption(**response.data[0])
     except APIError as e:
