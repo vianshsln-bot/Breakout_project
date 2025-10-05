@@ -3,7 +3,7 @@ from supabase import create_client, Client as SupabaseClient
 from dotenv import load_dotenv
 
 # Load environment variables from a .env file
-load_dotenv("backend/config/keys.env")
+load_dotenv(r"backend/config/keys.env")
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
