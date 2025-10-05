@@ -4,56 +4,42 @@ from postgrest import APIError
 from backend.config.supabase_client import supabase
 from backend.models.event_model import Event, EventCreate, EventUpdate
 
-def create_event(event_data: EventCreate) -> Event:
-    """Creates a new event record."""
-    try:
-        event_dict = event_data.model_dump(mode="json")
-        response = supabase.table("Events").insert(event_dict).execute()
-        return Event(**response.data[0])
-    except APIError as e:
-        raise e
 
-def get_all_events(skip: int = 0, limit: int = 100) -> List[Event]:
-    """Retrieves a list of all events."""
-    try:
-        response = supabase.table("Events").select("*").range(skip, skip + limit - 1).execute()
-        return [Event(**item) for item in response.data] if response.data else []
-    except APIError as e:
-        raise e
+# file: services/event_service.py
 
-def get_event_by_id(event_id: int) -> Optional[Event]:
+from typing import List, Dict, Any
+from postgrest import APIResponse
+
+def create_event(event: EventCreate) -> Dict[str, Any]:
+    """Creates a new event record in the database."""
+    event_dict = event.model_dump(by_alias=True)
+    response: APIResponse = supabase.table("Events").insert(event_dict).execute()
+    
+    if response.data:
+        return response.data[0]
+    raise Exception("Could not create event.")
+
+def get_event_by_id(event_id: int) -> Dict[str, Any] | None:
     """Retrieves a single event by its ID."""
-    try:
-        response = supabase.table("Events").select("*").eq("event_id", event_id).single().execute()
-        return Event(**response.data) if response.data else None
-    except APIError as e:
-        print(f"Error fetching event by ID {event_id}: {e.message}")
-        return None
+    response: APIResponse = supabase.table("Events").select("*").eq("Event_ID", event_id).single().execute()
+    return response.data if response.data else None
 
-def get_events_by_customer_id(customer_id: int) -> List[Event]:
-    """Retrieves all events for a specific customer."""
-    try:
-        response = supabase.table("Events").select("*").eq("customer_id", customer_id).execute()
-        return [Event(**item) for item in response.data] if response.data else []
-    except APIError as e:
-        raise e
+def get_all_events(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+    """Retrieves a list of all events with pagination."""
+    response: APIResponse = supabase.table("Events").select("*").range(skip, skip + limit - 1).execute()
+    return response.data if response.data else []
 
-def update_event(event_id: int, event_data: EventUpdate) -> Optional[Event]:
-    """Updates an existing event's record."""
-    try:
-        update_dict = event_data.model_dump(exclude_unset=True,mode="json")
-        if not update_dict:
-            return get_event_by_id(event_id)
+def update_event(event_id: int, event_update: EventUpdate) -> Dict[str, Any] | None:
+    """Updates an existing event's information."""
+    update_data = event_update.model_dump(by_alias=True, exclude_unset=True)
+    
+    if not update_data:
+        return get_event_by_id(event_id)
         
-        response = supabase.table("Events").update(update_dict).eq("event_id", event_id).execute()
-        return Event(**response.data[0]) if response.data else None
-    except APIError as e:
-        raise e
+    response: APIResponse = supabase.table("Events").update(update_data).eq("Event_ID", event_id).execute()
+    return response.data[0] if response.data else None
 
-def delete_event(event_id: int) -> Optional[Event]:
-    """Deletes an event from the database."""
-    try:
-        response = supabase.table("Events").delete().eq("event_id", event_id).execute()
-        return Event(**response.data[0]) if response.data else None
-    except APIError as e:
-        raise e
+def delete_event(event_id: int) -> Dict[str, Any] | None:
+    """Deletes an event record from the database."""
+    response: APIResponse = supabase.table("Events").delete().eq("Event_ID", event_id).execute()
+    return response.data[0] if response.data else None
