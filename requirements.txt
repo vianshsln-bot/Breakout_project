@@ -7,4 +7,5 @@ supabase
 
 # Data Validation & Settings Management
 pydantic
+pydantic[email]
 python-dotenv
