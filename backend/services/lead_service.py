@@ -8,7 +8,7 @@ from backend.models.lead_model import LeadCreate,LeadUpdate
 
 def create_lead(lead: LeadCreate) -> Dict[str, Any]:
     """Creates a new lead record in the database."""
-    lead_dict = lead.model_dump(by_alias=True)
+    lead_dict = lead.model_dump(by_alias=True,mode="json")
     response: APIResponse = supabase.table("Leads").insert(lead_dict).execute()
     
     if response.data:
@@ -27,7 +27,7 @@ def get_all_leads(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
 
 def update_lead(lead_id: int, lead_update: LeadUpdate) -> Dict[str, Any] | None:
     """Updates an existing lead's information."""
-    update_data = lead_update.model_dump(by_alias=True, exclude_unset=True)
+    update_data = lead_update.model_dump(by_alias=True, exclude_unset=True,,mode="json")
     
     if not update_data:
         return get_lead_by_id(lead_id)
