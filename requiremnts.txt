@@ -1,0 +1,10 @@
+# Web Framework & Server
+fastapi
+uvicorn[standard]
+
+# Supabase Client 
+supabase
+
+# Data Validation & Settings Management
+pydantic
+python-dotenv
