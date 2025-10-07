@@ -163,33 +163,33 @@ const priorities = ['High', 'Medium', 'Low'];
 
 
 
-export const leads: Lead[] = Array.from({ length: 150 }, (_, i) => ({
-  lead_id: i + 1,
-  name: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
-  email: `lead${i + 1}@example.com`,
-  phone_number: `+91-987-654-32${(i + 10).toString().padStart(2, '0')}`,
-  source: leadSources[i % leadSources.length],
-  status: statuses[i % statuses.length],
-  lead_type: leadTypes[i % leadTypes.length],
-  priority: priorities[i % priorities.length],
-  notes: i % 4 === 0 ? null : 'Initial contact made. Follow up required.',
-  last_notified: i % 3 === 0 ? null : new Date(Date.now() - i * 3600000).toISOString(),
-  created_at: new Date(Date.now() - i * 86400000).toISOString(),
-}));
+// export const leads: Lead[] = Array.from({ length: 150 }, (_, i) => ({
+//   lead_id: i + 1,
+//   name: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
+//   email: `lead${i + 1}@example.com`,
+//   phone_number: `+91-987-654-32${(i + 10).toString().padStart(2, '0')}`,
+//   source: leadSources[i % leadSources.length],
+//   status: statuses[i % statuses.length],
+//   lead_type: leadTypes[i % leadTypes.length],
+//   priority: priorities[i % priorities.length],
+//   notes: i % 4 === 0 ? null : 'Initial contact made. Follow up required.',
+//   last_notified: i % 3 === 0 ? null : new Date(Date.now() - i * 3600000).toISOString(),
+//   created_at: new Date(Date.now() - i * 86400000).toISOString(),
+// }));
 
-export const events: Event[] = Array.from({ length: 100 }, (_, i) => ({
-  id: `event-${i + 1}`,
-  name: `${eventTypes[i % eventTypes.length]} ${i + 1}`,
-  type: eventTypes[i % eventTypes.length],
-  venue: venues[i % venues.length],
-  date: new Date(Date.now() + (i * 86400000 * 2)),
-  status: ['planned', 'confirmed', 'in-progress', 'completed', 'cancelled'][i % 5] as any,
-  capacity: 50 + (i % 10) * 20,
-  booked: 20 + (i % 10) * 15,
-  revenue: 5000 + (i % 20) * 2500,
-  customerId: `cust-${i + 1}`,
-  customerName: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`
-}));
+// export const events: Event[] = Array.from({ length: 100 }, (_, i) => ({
+//   id: `event-${i + 1}`,
+//   name: `${eventTypes[i % eventTypes.length]} ${i + 1}`,
+//   type: eventTypes[i % eventTypes.length],
+//   venue: venues[i % venues.length],
+//   date: new Date(Date.now() + (i * 86400000 * 2)),
+//   status: ['planned', 'confirmed', 'in-progress', 'completed', 'cancelled'][i % 5] as any,
+//   capacity: 50 + (i % 10) * 20,
+//   booked: 20 + (i % 10) * 15,
+//   revenue: 5000 + (i % 20) * 2500,
+//   customerId: `cust-${i + 1}`,
+//   customerName: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`
+// }));
 
 // export const calls: Call[] = Array.from({ length: 2000 }, (_, i) => {
 //   const startTime = new Date(Date.now() - i * 3600000);
