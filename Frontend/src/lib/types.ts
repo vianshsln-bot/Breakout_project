@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 
 
 
@@ -152,11 +153,13 @@ export interface Agent {
 }
 
 export interface WhatsAppTemplate {
+  read: number;
+  sent: number;
   id: string;
   name: string;
   category: string;
   content: string;
-  status: 'active' | 'pending' | 'rejected';
+  status: 'active' | 'pending' | 'rejected' | 'approved';
   language: string;
   metrics: {
     sent: number;

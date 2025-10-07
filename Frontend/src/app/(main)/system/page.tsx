@@ -1,6 +1,6 @@
 
 import { Header } from "@/components/layout/header";
-import { agentData, whatsAppTemplates, eventThemes, systemHealth, recentAudits } from "@/lib/data";
+import { agentData, whatsappTemplates, eventThemes, systemHealth, recentAudits } from "@/lib/data";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,7 +49,7 @@ export default function SystemPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {whatsAppTemplates.map(t => (
+                    {whatsappTemplates.map(t => (
                       <TableRow key={t.id}>
                         <TableCell className="font-medium">{t.name}</TableCell>
                         <TableCell><Badge variant={t.status === 'approved' ? 'default' : 'secondary'} className={t.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : ''}>{t.status}</Badge></TableCell>
