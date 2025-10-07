@@ -5,11 +5,11 @@ from enum import Enum
 
 class BookingStatus(str, Enum):
     """Enumeration for the possible statuses of a booking."""
-    PENDING = "pending"
-    CONFIRMED = "confirmed"
-    CANCELLED = "cancelled"
-    COMPLETED = "completed"
-    NO_SHOW = "no-show"
+    PENDING = "Pending"
+    CONFIRMED = "Confirmed"
+    CANCELLED = "Cancelled"
+    COMPLETED = "Completed"
+    NO_SHOW = "No-show"
 
 class BookingBase(BaseModel):
     """Base schema for booking, matching the database schema casing exactly."""
