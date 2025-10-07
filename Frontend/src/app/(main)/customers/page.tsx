@@ -176,7 +176,7 @@ useEffect(() => {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{customer.Email}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{customer.PhoneNumber}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{customer.Original_lead_ID}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{customer.Original_Lead_ID}</td>
                   <td className="px-4 py-3 text-sm">{new Date(customer.CustomerSince).toLocaleDateString()}</td>
                 </tr>
               ))}
