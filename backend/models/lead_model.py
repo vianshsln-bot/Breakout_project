@@ -32,8 +32,8 @@ class LeadBase(BaseModel):
     email: EmailStr = Field(..., alias="Email", description="Email address of the lead.", example="jane.doe@example.com")
     phone_number: Optional[str] = Field(None, alias="PhoneNumber", description="Phone number of the lead.", example="555-123-4567")
     
-    status: LeadStatus = Field(default=lead_status.NEW, alias="Status", description="The current stage of the lead in the sales funnel.")
-    lead_type: LeadType = Field(..., alias="LeadType", example=lead_type.NEW_INQUIRY)
+    status: lead_status = Field(default=lead_status.NEW, alias="Status", description="The current stage of the lead in the sales funnel.")
+    lead_type: lead_type = Field(..., alias="LeadType", example=lead_type.NEW_INQUIRY)
     priority: Priority = Field(default=priority.MEDIUM, alias="Priority")
     source: Optional[str] = Field(None, alias="Source", description="Where the lead came from (e.g., 'Website', 'Referral').", example="Website")
     notes: Optional[str] = Field(None, alias="Notes", description="Additional notes about the lead.")
