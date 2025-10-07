@@ -14,7 +14,7 @@ class ConsumptionBase(BaseModel):
     branch_id: int = Field(..., description="Foreign key for the branch where consumption occurred.", example=1)
     conv_id: str = Field(..., description="The conversation ID associated with this consumption.", example="conv_a1b2c3d4e5")
     follow_up_id: Optional[int] = Field(None, description="Foreign key for the follow-up associated with this consumption, if any.", example=51)
-    consumption_type: str = Field(..., description="The type of service that was consumed.", example=ConsumptionType.SIP_TRUNKING)
+    consumption_type: str = Field(..., description="The type of service that was consumed.", example="ELEVEN_LABS")
     credits_consumed: float = Field(..., ge=0, description="The number of credits consumed.", example=0.75)
     cost_in_rupees: float = Field(..., ge=0, description="The total cost of the consumption in Rupees.", example=5.50)
 
