@@ -67,12 +67,12 @@ export interface Booking {
 
 
 export interface Customer {
-  name: string;
-  email: string;
-  phone_number: string;
-  original_lead_id: number;
-  Customer_id: number;
-  customer_since: string;
+  Name: string;
+  Email: string;
+  PhoneNumber: string;
+  Original_lead_ID: number;
+  Customer_ID: number;
+  CustomerSince: string;
 }
 
 export interface CustomerListItem {
@@ -84,31 +84,28 @@ export interface CustomerListItem {
 }
 
 export interface Lead {
-  name: string;
-  email: string;
-  phone_number: string;
-  status: string;
-  lead_type: string;
-  priority: string;
-  source: string;
-  notes: string | null;
-  last_notified: string | null;
-  lead_id: number;
-  created_at: string;
+  Name: string;
+  Email: string;
+  PhoneNumber: string;
+  Status: string;
+  LeadType: string;
+  Priority: string;
+  Source: string;
+  Notes: string | null;
+  LastNotified: string | null;
+  Lead_ID: number;
+  CreatedAt: string;
 }
 
 export interface Event {
-  id: string;
-  name: string;
-  type: string;
-  venue: string;
-  date: Date;
-  status: 'planned' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled';
-  capacity: number;
-  booked: number;
-  revenue: number;
-  customerId: string;
-  customerName: string;
+  Event_ID: string;
+  Event_type: string;
+  Proposed_date: Date;
+  Status: 'proposed' | 'confirmed' | 'completed' | 'cancelled';
+  Guest_count: number;
+  Agent_ID:number
+  Customer_ID: string;
+  Notes: string;
 }
 
 export interface Call {

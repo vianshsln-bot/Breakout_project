@@ -6,7 +6,7 @@ import { Customer, Lead, Event } from '@/lib/types';
 import { API_BASE_URL } from '@/lib/config';
 
 // Mock data will be used for events until APIs are ready
-import { events as staticEvents } from '@/lib/data';
+// import { events as staticEvents } from '@/lib/data';
 
 
 type TabType = 'customers' | 'leads' | 'events';
@@ -17,10 +17,11 @@ export default function CustomersHubPage() {
   
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [events, setEvents] = useState<Event[]>(staticEvents);
+  const [events, setEvents] = useState<Event[]>([]);
 
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [loadingLeads, setLoadingLeads] = useState(true);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
 useEffect(() => {
@@ -33,14 +34,16 @@ useEffect(() => {
       setError(null);
 
       try {
-        const [customersResponse, leadsResponse] = await Promise.all([
+        const [customersResponse, leadsResponse, eventsResponse] = await Promise.all([
           fetch(`${API_BASE_URL}/customers/?skip=0&limit=100`),
-          fetch(`${API_BASE_URL}/leads/?skip=0&limit=100`)
+          fetch(`${API_BASE_URL}/leads/?skip=0&limit=100`),
+          fetch(`${API_BASE_URL}/events/?skip=0&limit=100`)
         ]);
 
         // Log the raw responses to check status, headers, etc.
         console.log('Customers API Response:', customersResponse);
         console.log('Leads API Response:', leadsResponse);
+        console.log('Events API Response:', eventsResponse);
 
         if (!customersResponse.ok) {
           // Log the specific error before throwing
@@ -61,10 +64,38 @@ useEffect(() => {
         }
         const leadsData = await leadsResponse.json();
         
+        
         // Log the actual data if retrieval is successful
         console.log('Successfully retrieved Leads Data:', leadsData);
         setLeads(leadsData);
         setLoadingLeads(false);
+
+
+        if (!eventsResponse.ok) {
+          // Log the specific error before throwing
+          console.error('Leads fetch failed with status:', leadsResponse.status);
+          throw new Error(`HTTP error! Status: ${leadsResponse.status} on leads`);
+        }
+        const eventsdata = await eventsResponse.json();
+        
+        
+        // Log the actual data if retrieval is successful
+        console.log('Successfully retrieved events Data:', eventsdata); 
+        setEvents(eventsdata);
+        setLoadingEvents(false);
+        // customersData.forEach((c: { name: any; email: any; }) => {
+        //   if (!c.name || !c.email) console.log("Bad customer:", c);
+        //   else console.log("good",c)
+        // });
+        // leadsData.forEach((l: { name: any; email: any; }) => {
+        //   if (!l.name || !l.email) console.log("Bad lead:", l);
+        //   else console.log("good",l)
+
+        // });
+        // eventsdata.forEach((e: { event_type: any; notes: any; }) => {
+        //   if (!e.event_type || !e.notes) console.log("Bad event:", e);
+        //   else console.log("good",e)
+        // });
 
       } catch (err) {
         // Log the full error object to the console for detailed inspection
@@ -75,6 +106,8 @@ useEffect(() => {
         } else {
           setError('An unexpected error occurred');
         }
+
+        setLoadingEvents(false)
         setLoadingCustomers(false);
         setLoadingLeads(false);
       }
@@ -94,10 +127,11 @@ useEffect(() => {
   );
 
   const filteredEvents = events.filter(e =>
-    e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+    e.Event_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    e.Notes.toLowerCase().includes(searchTerm.toLowerCase())
   ).slice(0, 50);
   
+
   const renderContent = () => {
     const loading = activeTab === 'customers' ? loadingCustomers : activeTab === 'leads' ? loadingLeads : false;
 
@@ -216,46 +250,35 @@ useEffect(() => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venue</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Capacity</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proposed Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest Count</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Agent ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredEvents.map((event) => (
-                <tr key={event.id} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="px-4 py-3 font-medium text-gray-900">{event.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{event.type}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{event.venue}</td>
+                <tr key={event.Event_ID} className="hover:bg-gray-50 cursor-pointer">
+                  <td className="px-4 py-3 font-medium text-gray-900">{event.Customer_ID}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{event.Event_type}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{event.Notes}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(event.date).toLocaleDateString()}
+                    {new Date(event.Proposed_date).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{event.customerName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {event.booked} / {event.capacity}
-                    <div className="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-600"
-                        style={{ width: `${(event.booked / event.capacity) * 100}%` }}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-bold text-emerald-600">
-                    ₹{event.revenue.toLocaleString()}
-                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{event.Guest_count} </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{event.Agent_ID} </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      event.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
-                      event.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                      event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                      event.Status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
+                      event.Status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                      event.Status === 'proposed' ? 'bg-gray-100 text-gray-800' :
+                      event.Status === 'cancelled' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {event.status}
+                      {event.Status}
                     </span>
                   </td>
                 </tr>
