@@ -163,7 +163,9 @@ useEffect(() => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lead ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Since</th>
+                
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -174,6 +176,7 @@ useEffect(() => {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{customer.Email}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{customer.PhoneNumber}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{customer.Original_lead_ID}</td>
                   <td className="px-4 py-3 text-sm">{new Date(customer.CustomerSince).toLocaleDateString()}</td>
                 </tr>
               ))}
