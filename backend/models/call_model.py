@@ -6,7 +6,7 @@ class CallBase(BaseModel):
     Customer_ID: int = Field(..., description="Foreign key for the customer making the call.", example=201)
     Transcript: Optional[str] = Field(None, description="The full transcript of the call.")
     Date_time: datetime = Field(..., description="The time the call was made.", example="2025-10-04T14:30:00Z")
-    Duration: Optional[int] = Field(None, gt=0, description="Duration of the call in seconds.", example=375.5)
+    Duration: Optional[int] = Field(None, gt=0, description="Duration of the call in seconds.", example=375)
     Call_intent: Optional[str] = Field(None, max_length=100, description="The detected intent of the call.", example="New Booking Inquiry")
     Credits_consumed: Optional[float] = Field(None, ge=0, description="Credits or cost consumed by the call.", example=1.25)
 
