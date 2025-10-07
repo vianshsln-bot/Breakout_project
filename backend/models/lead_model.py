@@ -6,7 +6,7 @@ from enum import Enum
 
 # --- Enums for Lead Properties ---
 
-class LeadStatus(str, Enum):
+class lead_status(str, Enum):
     """Defines the lifecycle stage of a lead."""
     NEW = "new"
     CONTACTED = "contacted"
@@ -14,12 +14,12 @@ class LeadStatus(str, Enum):
     CONVERTED = "converted"
     LOST = "lost"
 
-class LeadType(str, Enum):
+class lead_type(str, Enum):
     NEW_INQUIRY = "new_inquiry"
     FOLLOW_UP = "follow_up"
     CALLBACK_REQUEST = "callback_request"
 
-class Priority(str, Enum):
+class priority(str, Enum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
