@@ -6,7 +6,7 @@ from enum import Enum
 
 # --- Enums for Lead Properties ---
 
-class lead_status(str, Enum):
+class lead_status_enum(str, Enum):
     """Defines the lifecycle stage of a lead."""
     NEW = "new"
     CONTACTED = "contacted"
@@ -14,12 +14,12 @@ class lead_status(str, Enum):
     CONVERTED = "converted"
     LOST = "lost"
 
-class lead_type(str, Enum):
+class lead_type_enum(str, Enum):
     NEW_INQUIRY = "new_inquiry"
     FOLLOW_UP = "follow_up"
     CALLBACK_REQUEST = "callback_request"
 
-class priority(str, Enum):
+class priority_enum(str, Enum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
@@ -31,10 +31,10 @@ class LeadBase(BaseModel):
     name: str = Field(..., alias="Name", description="Full name of the lead.", example="Jane Doe")
     email: EmailStr = Field(..., alias="Email", description="Email address of the lead.", example="jane.doe@example.com")
     phone_number: Optional[str] = Field(None, alias="PhoneNumber", description="Phone number of the lead.", example="555-123-4567")
-    
-    status: lead_status = Field(default=lead_status.NEW, alias="Status", description="The current stage of the lead in the sales funnel.")
-    lead_type: lead_type = Field(..., alias="LeadType", example=lead_type.NEW_INQUIRY)
-    priority: priority = Field(default=priority.MEDIUM, alias="Priority")
+
+    status: lead_status_enum = Field(default=lead_status_enum.NEW, alias="Status", description="The current stage of the lead in the sales funnel.")
+    lead_type: lead_type_enum = Field(..., alias="LeadType", example=lead_type_enum.NEW_INQUIRY)
+    priority: priority_enum = Field(default=priority_enum.MEDIUM, alias="Priority")
     source: Optional[str] = Field(None, alias="Source", description="Where the lead came from (e.g., 'Website', 'Referral').", example="Website")
     notes: Optional[str] = Field(None, alias="Notes", description="Additional notes about the lead.")
     last_notified: Optional[datetime] = Field(None, alias="LastNotified", description="Timestamp of when the lead was last notified or contacted.")
@@ -48,9 +48,9 @@ class LeadUpdate(BaseModel):
     name: Optional[str] = Field(None, alias="Name")
     email: Optional[EmailStr] = Field(None, alias="Email")
     phone_number: Optional[str] = Field(None, alias="PhoneNumber")
-    status: Optional[lead_status] = Field(None, alias="Status")
-    lead_type: Optional[lead_type] = Field(None, alias="LeadType")
-    priority: Optional[priority] = Field(None, alias="Priority")
+    status: Optional[lead_status_enum] = Field(None, alias="Status")
+    lead_type: Optional[lead_type_enum] = Field(None, alias="LeadType")
+    priority: Optional[priority_enum] = Field(None, alias="Priority")
     source: Optional[str] = Field(None, alias="Source")
     notes: Optional[str] = Field(None, alias="Notes")
     last_notified: Optional[datetime] = Field(None, alias="LastNotified")
