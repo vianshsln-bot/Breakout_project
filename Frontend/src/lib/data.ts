@@ -154,25 +154,27 @@ const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', '
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
 const companies = ['Tech Corp', 'Global Enterprises', 'Innovation Inc', 'Future Solutions', 'Prime Industries'];
 const eventTypes = ['Wedding', 'Corporate Event', 'Birthday Party', 'Conference', 'Product Launch', 'Gala Dinner'];
+const leadTypes = ['new', 'contacted', 'qualified','converted', 'lost'];
 const venues = ['Grand Ballroom', 'Riverside Garden', 'Metropolitan Hall', 'Skyline Terrace', 'Harbor View Center'];
 const topics = ['Booking Inquiry', 'Pricing Question', 'Date Availability', 'Menu Options', 'Payment Issue'];
 const leadSources = ['Website', 'Referral', 'Social Media', 'Email Campaign', 'Cold Call'];
+const statuses = ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'];
+const priorities = ['High', 'Medium', 'Low'];
+
 
 
 export const leads: Lead[] = Array.from({ length: 150 }, (_, i) => ({
-  id: `lead-${i + 1}`,
+  lead_id: i + 1,
   name: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
   email: `lead${i + 1}@example.com`,
-  phone: `+1-555-020${i.toString().padStart(2, '0')}`,
+  phone_number: `+91-987-654-32${(i + 10).toString().padStart(2, '0')}`,
   source: leadSources[i % leadSources.length],
-  status: ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'][i % 7] as any,
-  score: 30 + (i % 70),
-  eventType: eventTypes[i % eventTypes.length],
-  expectedValue: 500 + (i % 20) * 500,
-  followUpDate: i % 3 === 0 ? new Date(Date.now() + i * 86400000) : undefined,
-  assignedAgent: i % 4 !== 0 ? `agent-${(i % 10) + 1}` : undefined,
-  notes: 'Initial contact made. Interested in premium package.',
-  createdAt: new Date(Date.now() - i * 86400000)
+  status: statuses[i % statuses.length],
+  lead_type: leadTypes[i % leadTypes.length],
+  priority: priorities[i % priorities.length],
+  notes: i % 4 === 0 ? null : 'Initial contact made. Follow up required.',
+  last_notified: i % 3 === 0 ? null : new Date(Date.now() - i * 3600000).toISOString(),
+  created_at: new Date(Date.now() - i * 86400000).toISOString(),
 }));
 
 export const events: Event[] = Array.from({ length: 100 }, (_, i) => ({
@@ -189,33 +191,33 @@ export const events: Event[] = Array.from({ length: 100 }, (_, i) => ({
   customerName: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`
 }));
 
-export const calls: Call[] = Array.from({ length: 2000 }, (_, i) => {
-  const startTime = new Date(Date.now() - i * 3600000);
-  const duration = 60 + (i % 1140);
-  const isAI = i % 3 !== 0;
+// export const calls: Call[] = Array.from({ length: 2000 }, (_, i) => {
+//   const startTime = new Date(Date.now() - i * 3600000);
+//   const duration = 60 + (i % 1140);
+//   const isAI = i % 3 !== 0;
 
-  return {
-    id: `call-${i + 1}`,
-    customerId: `cust-${(i % 500) + 1}`,
-    customerName: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
-    agentId: `agent-${(i % 25) + 1}`,
-    agentName: isAI ? `AI Agent ${(i % 15) + 1}` : `${firstNames[(i+5) % firstNames.length]} ${lastNames[(i+5) % lastNames.length]}`,
-    agentType: isAI ? 'ai' : 'human',
-    direction: i % 2 === 0 ? 'inbound' : 'outbound',
-    duration,
-    outcome: ['resolved', 'transferred', 'callback', 'abandoned'][i % 4] as any,
-    sentiment: i % 5 === 0 ? 'negative' : i % 2 === 0 ? 'neutral' : 'positive',
-    sentimentJourney: Array.from({ length: 10 }, (_, j) => 50 + Math.sin(i + j) * 40 + (i%10)),
-    topics: [topics[i % topics.length], topics[(i+1) % topics.length]],
-    intentRecognized: i % 10 !== 0,
-    intentAccuracy: 80 + (i % 20),
-    transcript: 'Customer inquired about availability for wedding in June. Discussed package options and pricing. Scheduled follow-up call.',
-    startTime,
-    endTime: new Date(startTime.getTime() + duration * 1000),
-    cost: isAI ? 0.5 + (i % 10) * 0.15 : 2 + (i % 20) * 0.3,
-    qualityScore: 80 + (i % 20)
-  };
-});
+//   return {
+//     id: `call-${i + 1}`,
+//     customerId: `cust-${(i % 500) + 1}`,
+//     customerName: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
+//     agentId: `agent-${(i % 25) + 1}`,
+//     agentName: isAI ? `AI Agent ${(i % 15) + 1}` : `${firstNames[(i+5) % firstNames.length]} ${lastNames[(i+5) % lastNames.length]}`,
+//     agentType: isAI ? 'ai' : 'human',
+//     direction: i % 2 === 0 ? 'inbound' : 'outbound',
+//     duration,
+//     outcome: ['resolved', 'transferred', 'callback', 'abandoned'][i % 4] as any,
+//     sentiment: i % 5 === 0 ? 'negative' : i % 2 === 0 ? 'neutral' : 'positive',
+//     sentimentJourney: Array.from({ length: 10 }, (_, j) => 50 + Math.sin(i + j) * 40 + (i%10)),
+//     topics: [topics[i % topics.length], topics[(i+1) % topics.length]],
+//     intentRecognized: i % 10 !== 0,
+//     intentAccuracy: 80 + (i % 20),
+//     transcript: 'Customer inquired about availability for wedding in June. Discussed package options and pricing. Scheduled follow-up call.',
+//     startTime,
+//     endTime: new Date(startTime.getTime() + duration * 1000),
+//     cost: isAI ? 0.5 + (i % 10) * 0.15 : 2 + (i % 20) * 0.3,
+//     qualityScore: 80 + (i % 20)
+//   };
+// });
 
 
 export const agents: Agent[] = [
@@ -259,6 +261,8 @@ export const whatsappTemplates: WhatsAppTemplate[] = Array.from({ length: 20 }, 
   category: ['Marketing', 'Transactional', 'Authentication', 'Utility'][i % 4],
   content: 'Hello {{name}}, your booking for {{event}} on {{date}} is confirmed!',
   status: i % 10 < 8 ? 'active' : (i % 2 === 0 ? 'pending' : 'rejected'),
+  read: 85 + i * 5,
+  sent: 100 + i * 500,
   language: 'en',
   metrics: {
     sent: 100 + i * 500,
@@ -270,19 +274,19 @@ export const whatsappTemplates: WhatsAppTemplate[] = Array.from({ length: 20 }, 
   createdAt: new Date(Date.now() - i * 86400000 * 4.5)
 }));
 
-export const themes: Theme[] = Array.from({ length: 25 }, (_, i) => ({
-  id: `theme-${i + 1}`,
-  name: `${['Classic', 'Modern', 'Luxury', 'Rustic', 'Garden', 'Beach', 'Urban', 'Vintage'][i % 8]} Package ${i + 1}`,
-  description: 'Complete event package with venue, catering, and decoration',
-  basePrice: 1000 + (i % 10) * 500,
-  category: ['Wedding', 'Corporate', 'Birthday', 'Conference'][i % 4],
-  features: ['Venue', 'Catering', 'Decoration', 'Photography', 'Entertainment'],
-  status: i % 10 !== 0 ? 'active' : 'inactive',
-  popularity: 10 + (i % 90),
-  bookings: 1 + (i % 50),
-  revenue: 5000 + (i % 20) * 5000,
-  seasonalMultiplier: i % 3 === 0 ? 1 + (i % 5) * 0.1 : undefined
-}));
+// export const themes: Theme[] = Array.from({ length: 25 }, (_, i) => ({
+//   id: `theme-${i + 1}`,
+//   name: `${['Classic', 'Modern', 'Luxury', 'Rustic', 'Garden', 'Beach', 'Urban', 'Vintage'][i % 8]} Package ${i + 1}`,
+//   description: 'Complete event package with venue, catering, and decoration',
+//   basePrice: 1000 + (i % 10) * 500,
+//   category: ['Wedding', 'Corporate', 'Birthday', 'Conference'][i % 4],
+//   features: ['Venue', 'Catering', 'Decoration', 'Photography', 'Entertainment'],
+//   status: i % 10 !== 0 ? 'active' : 'inactive',
+//   popularity: 10 + (i % 90),
+//   bookings: 1 + (i % 50),
+//   revenue: 5000 + (i % 20) * 5000,
+//   seasonalMultiplier: i % 3 === 0 ? 1 + (i % 5) * 0.1 : undefined
+// }));
 
 export const alerts: Alert[] = [
   {
