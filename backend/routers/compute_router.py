@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List
 from postgrest import APIError
 import os
-from supabase import create_client, Client as SupabaseClient
+
+from backend.config.supabase_client import supabase
 from dotenv import load_dotenv
 
 router = APIRouter(prefix="/compute", tags=["Compute Functions"])
