@@ -8,7 +8,7 @@ def create_call(call_data: CallCreate) -> Call:
     """Creates a new call record."""
     try:
         call_dict = call_data.model_dump(mode='json') # Use mode='json' to serialize date/time
-        response = supabase.table("Call").insert(call_dict).execute()
+        response = supabase.table("call").insert(call_dict).execute()
         return Call(**response.data[0])
     except APIError as e:
         raise e
@@ -16,7 +16,7 @@ def create_call(call_data: CallCreate) -> Call:
 def get_all_calls(skip: int = 0, limit: int = 100) -> List[Call]:
     """Retrieves a list of all calls."""
     try:
-        response = supabase.table("Call").select("*").order("Date_time", desc=True).range(skip, skip + limit - 1).execute()
+        response = supabase.table("call").select("*").order("date_time", desc=True).range(skip, skip + limit - 1).execute()
         return [Call(**item) for item in response.data] if response.data else []
     except APIError as e:
         raise e
@@ -24,7 +24,7 @@ def get_all_calls(skip: int = 0, limit: int = 100) -> List[Call]:
 def get_call_by_conv_id(conv_id: str) -> Optional[Call]:
     """Retrieves a single call by its conversation ID."""
     try:
-        response = supabase.table("Call").select("*").eq("Conv_ID", conv_id).single().execute()
+        response = supabase.table("call").select("*").eq("conv_id", conv_id).single().execute()
         return Call(**response.data) if response.data else None
     except APIError as e:
         print(f"Error fetching call by conv_id {conv_id}: {e.message}")
@@ -33,7 +33,7 @@ def get_call_by_conv_id(conv_id: str) -> Optional[Call]:
 def get_calls_by_customer_id(customer_id: int) -> List[Call]:
     """Retrieves all calls for a specific customer."""
     try:
-        response = supabase.table("Call").select("*").eq("Customer_ID", customer_id).execute()
+        response = supabase.table("call").select("*").eq("customer_id", customer_id).execute()
         return [Call(**item) for item in response.data] if response.data else []
     except APIError as e:
         raise e
@@ -45,7 +45,7 @@ def update_call(conv_id: str, call_data: CallUpdate) -> Optional[Call]:
         if not update_dict:
             return get_call_by_conv_id(conv_id)
 
-        response = supabase.table("Call").update(update_dict).eq("Conv_ID", conv_id).execute()
+        response = supabase.table("call").update(update_dict).eq("conv_id", conv_id).execute()
         return Call(**response.data[0]) if response.data else None
     except APIError as e:
         raise e
@@ -53,7 +53,7 @@ def update_call(conv_id: str, call_data: CallUpdate) -> Optional[Call]:
 def delete_call(conv_id: str) -> Optional[Call]:
     """Deletes a call from the database."""
     try:
-        response = supabase.table("Call").delete().eq("Conv_ID", conv_id).execute()
+        response = supabase.table("call").delete().eq("conv_id", conv_id).execute()
         return Call(**response.data[0]) if response.data else None
     except APIError as e:
         raise e
