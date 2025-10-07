@@ -1,5 +1,6 @@
-from fastapi import APIRouter,  HTTPException
-
+from fastapi import APIRouter, HTTPException, status
+from typing import List
+from postgrest import APIError
 import os
 from supabase import create_client, Client as SupabaseClient
 from dotenv import load_dotenv
