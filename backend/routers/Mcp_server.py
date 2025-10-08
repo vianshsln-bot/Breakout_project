@@ -144,7 +144,7 @@ async def mcp_handler(req: MCPRequest, db=Depends(get_db)):
             dispatch = {
                 # Bookings
                 "get_booking_by_id": lambda: get_booking_by_id(args["booking_id"]),
-                "j":  lambda: get_all_bookings(),
+                "get_all_bookings":  lambda: get_all_bookings(),
                 "create_booking":    lambda: create_booking(args["data"]),
                 "update_booking":    lambda: update_booking(args["booking_id"], args["data"]),
                 "delete_booking":    lambda: delete_booking(args["booking_id"]),
