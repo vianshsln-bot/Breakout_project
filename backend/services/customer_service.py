@@ -22,6 +22,27 @@ def get_customer_by_id(customer_id: int) -> Dict[str, Any] | None:
     response: APIResponse = supabase.table("customers").select("*").eq("customer_id", customer_id).single().execute()
     return response.data if response.data else None
 
+
+def get_customer_by_identifier(identifier: str) -> Dict[str, Any] | None:
+    """
+    Retrieves a single customer by their email OR phone number.
+
+    Args:
+        identifier: The email or phone number to search for.
+
+    Returns:
+        A dictionary with the customer's data or None if not found.
+    """
+    response: APIResponse = (
+        supabase.table("customers")
+        .select("*")
+        .or_(f"email.eq.{identifier},phone_number.eq.{identifier}")
+        .single() 
+        .execute()
+    )
+    
+    return response.data if response.data else None
+
 def get_all_customers(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
     """Retrieves a list of all customers with pagination."""
     response: APIResponse = supabase.table("customers").select("*").range(skip, skip + limit - 1).execute()
