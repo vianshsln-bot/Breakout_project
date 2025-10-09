@@ -35,7 +35,7 @@ def read_customer_by_id(customer_id: int):
     return customer
 
 
-@router.get("/{identifier}", response_model=Customer)
+@router.get("/lookup/{identifier}", response_model=Customer)
 def read_customer_by_identifier(identifier: str):
     """
     Endpoint to retrieve a specific customer by their email or phone number.
