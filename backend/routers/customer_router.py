@@ -34,6 +34,22 @@ def read_customer_by_id(customer_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     return customer
 
+
+@router.get("/{identifier}", response_model=Customer)
+def read_customer_by_identifier(identifier: str):
+    """
+    Endpoint to retrieve a specific customer by their email or phone number.
+    """
+    customer = customer_service.get_customer_by_identifier(identifier)
+    
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Customer not found"
+        )
+        
+    return customer
+
 @router.patch("/{customer_id}", response_model=Customer)
 def update_existing_customer(customer_id: int, customer_update: CustomerUpdate):
     """Endpoint to update a customer's details."""
