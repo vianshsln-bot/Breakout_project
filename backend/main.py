@@ -27,6 +27,7 @@ origins = [
     "http://localhost:3000", # Common for React frontends
     "http://localhost:8080", # Common for Vue frontends
     "http://localhost:4200", # Common for Angular frontends
+    "http://localhost:9002",
     "*" # testing
 ]
 
