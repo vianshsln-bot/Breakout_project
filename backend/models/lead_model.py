@@ -34,7 +34,7 @@ class LeadBase(BaseModel):
 
     status: lead_status_enum = Field(default=lead_status_enum.NEW,  description="The current stage of the lead in the sales funnel.")
     lead_type: lead_type_enum = Field(..., example=lead_type_enum.NEW_INQUIRY)
-    priority: priority_enum = Field(default=priority_enum.MEDIUM, alias="Priority")
+    priority: priority_enum = Field(default=priority_enum.MEDIUM)
     source: Optional[str] = Field(None, description="Where the lead came from (e.g., 'Website', 'Referral').", example="Website")
     notes: Optional[str] = Field(None, description="Additional notes about the lead.")
     last_notified: Optional[datetime] = Field(None, description="Timestamp of when the lead was last notified or contacted.")
