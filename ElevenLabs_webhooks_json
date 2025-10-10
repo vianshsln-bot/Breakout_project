@@ -393,31 +393,31 @@ get slots
   "force_pre_tool_speech": "auto",
   "assignments": [],
   "api_schema": {
-    "url": "https://breakout-project.onrender.com/slots",
+    "url": "https://breakout-project.onrender.com/slots/?skip={skip}&limit={limit}",
     "method": "GET",
-    "path_params_schema": [],
-    "query_params_schema": [
-      {
-        "id": "limit",
-        "type": "integer",
-        "value_type": "llm_prompt",
-        "description": "limit the number of slots to be return",
-        "dynamic_variable": "",
-        "constant_value": "",
-        "enum": null,
-        "required": true
-      },
+    "path_params_schema": [
       {
         "id": "skip",
-        "type": "integer",
+        "type": "string",
         "value_type": "llm_prompt",
-        "description": "number of pages to skip",
+        "description": "number of pages to skip \ndefault is 0",
         "dynamic_variable": "",
         "constant_value": "",
         "enum": null,
-        "required": true
+        "required": false
+      },
+      {
+        "id": "limit",
+        "type": "string",
+        "value_type": "llm_prompt",
+        "description": "number of slots to provide \ndefault is 100",
+        "dynamic_variable": "",
+        "constant_value": "",
+        "enum": null,
+        "required": false
       }
     ],
+    "query_params_schema": [],
     "request_body_schema": null,
     "request_headers": [],
     "auth_connection": null
@@ -427,7 +427,6 @@ get slots
     "dynamic_variable_placeholders": {}
   }
 }
-
 get_bookings
 {
   "type": "webhook",
