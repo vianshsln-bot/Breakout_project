@@ -311,7 +311,7 @@ create leads
           "required": true
         },
         {
-          "id": "Priority",
+          "id": "priority",
           "type": "string",
           "value_type": "llm_prompt",
           "description": "Will always be \"medium\"",
@@ -342,7 +342,6 @@ create leads
     "dynamic_variable_placeholders": {}
   }
 }
-
 
 get customer information
 {
