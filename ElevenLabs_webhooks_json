@@ -1,0 +1,461 @@
+get _branches
+{
+  "type": "webhook",
+  "name": "get_branches",
+  "description": "List all branches of breakout rooms.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://breakout-project.onrender.com/branches/",
+    "method": "GET",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": null,
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
+
+
+
+
+Create_events
+
+
+{
+  "type": "webhook",
+  "name": "create_events",
+  "description": "Users who are looking for an event for example, birthday parties, corporate events etc.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://breakout-project.onrender.com/events/",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Contains necessary information for creating an event.\ncustomer_id : retrieve using get_customer_information tool ( default = 0)\nguest_count : expected number of guests in the event\nproposed date : in format (2025-10-10T13:01:19.172Z) \nevent_type: type of event , birthday party, family event, corporate etc\nagent_id : 0 only\nnotes: anything else the user would like to mention\nstatus: propose\n",
+      "properties": [
+        {
+          "id": "agent_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "agent_id : 0 only",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "event_type",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "event_type: type of event , birthday party, family event, corporate etc\n",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "customer_id",
+          "type": "integer",
+          "value_type": "llm_prompt",
+          "description": "\ncustomer_id : retrieve using get_customer_information tool ( default = 0)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": false
+        },
+        {
+          "id": "guest_count",
+          "type": "integer",
+          "value_type": "llm_prompt",
+          "description": "\nguest_count : expected number of guests in the event",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "status",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "\"propose\" only for now",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "proposed_date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "\nproposed date : in format (2025-10-10T13:01:19.172Z) \n",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "notes",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "\nnotes: anything else the user would like to mention\n",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
+
+
+Get all themes
+{
+  "type": "webhook",
+  "name": "get_all_themes",
+  "description": "all the themes of escape rooms breakout rooms provides. \nprovide this info to customer properly.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://breakout-project.onrender.com/themes/?skip=0&limit=100",
+    "method": "GET",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": null,
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
+
+Create booking
+{
+  "type": "webhook",
+  "name": "create_booking",
+  "description": "create bookings for customers.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://breakout-project.onrender.com/bookings/",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "parameters for creating a booking",
+      "properties": [
+        {
+          "id": "booking_date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Booking  date and time \nmake sure the format is like this \"2025-10-09T14:26:40.070Z\"",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": false
+        },
+        {
+          "id": "guest_count",
+          "type": "integer",
+          "value_type": "llm_prompt",
+          "description": "number of guests coming",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "slot_id",
+          "type": "integer",
+          "value_type": "llm_prompt",
+          "description": "slot id of the slot customer wants to book",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "customer_id",
+          "type": "integer",
+          "value_type": "llm_prompt",
+          "description": "id of the customer",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "conv_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "system conversation id ",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
+
+create leads
+{
+  "type": "webhook",
+  "name": "create_leads",
+  "description": "Create new leads when customer is new.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://breakout-project.onrender.com/leads/",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "All the fields require to create a new lead",
+      "properties": [
+        {
+          "id": "notes",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Anything else user would like to mention. ",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": false
+        },
+        {
+          "id": "name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Name of the user.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": false
+        },
+        {
+          "id": "source",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Will always be \"Call\".\nor you may ask them where did they got to know about us.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "lead_type",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Will always be  \"new_inquiry\"",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "status",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "will always be \"new\"",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "email",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Email of the user",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "priority",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Will always be \"medium\"",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        },
+        {
+          "id": "phonenumber",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Phone Number of the user. make sure it is 10 digits and verify it as well.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "required": true
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
+
+get customer information
+{
+  "type": "webhook",
+  "name": "get_customer_information",
+  "description": "get customer details id, name , phone number , email \nfrom phone number. (XXXXXXXXXX)\nconfirm all the information with the customer.",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [
+    {
+      "source": "response",
+      "dynamic_variable": "customer_id",
+      "value_path": "Customer_ID"
+    }
+  ],
+  "api_schema": {
+    "url": "https://breakout-project.onrender.com/customers/lookup/{phone_number}",
+    "method": "GET",
+    "path_params_schema": [
+      {
+        "id": "phone_number",
+        "type": "string",
+        "value_type": "llm_prompt",
+        "description": "Phone number of the customer.\nMake sure the format is \"XXX-XXXX\".",
+        "dynamic_variable": "",
+        "constant_value": "",
+        "enum": null,
+        "required": false
+      }
+    ],
+    "query_params_schema": [],
+    "request_body_schema": null,
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
+
+get slots 
+{
+  "type": "webhook",
+  "name": "get_slots",
+  "description": "retrieve information of all the slots",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://breakout-project.onrender.com/slots/?skip={skip}&limit={limit}",
+    "method": "GET",
+    "path_params_schema": [
+      {
+        "id": "skip",
+        "type": "string",
+        "value_type": "llm_prompt",
+        "description": "number of pages to skip \ndefault is 0",
+        "dynamic_variable": "",
+        "constant_value": "",
+        "enum": null,
+        "required": false
+      },
+      {
+        "id": "limit",
+        "type": "string",
+        "value_type": "llm_prompt",
+        "description": "number of slots to provide \ndefault is 100",
+        "dynamic_variable": "",
+        "constant_value": "",
+        "enum": null,
+        "required": false
+      }
+    ],
+    "query_params_schema": [],
+    "request_body_schema": null,
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
+get_bookings
+{
+  "type": "webhook",
+  "name": "get_booking",
+  "description": "Get all bookings of the customers by customer_id\n",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "assignments": [],
+  "api_schema": {
+    "url": "https://breakout-project.onrender.com/bookings/customer/{customer_id}",
+    "method": "GET",
+    "path_params_schema": [
+      {
+        "id": "customer_id",
+        "type": "integer",
+        "value_type": "llm_prompt",
+        "description": "ID of the customer.",
+        "dynamic_variable": "",
+        "constant_value": "",
+        "enum": null,
+        "required": false
+      }
+    ],
+    "query_params_schema": [],
+    "request_body_schema": null,
+    "request_headers": [],
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  }
+}
