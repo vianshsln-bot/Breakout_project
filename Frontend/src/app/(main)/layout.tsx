@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import SidebarContext from '@/context/SidebarContext';
 import ClientNavigation from '@/components/ClientNavigation';
+import { useUserRole } from '@/context/UserRoleContext';
 
 export default function MainLayout({
   children,
@@ -10,6 +11,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { role, setRole } = useUserRole();
 
   return (
     <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
@@ -25,6 +27,19 @@ export default function MainLayout({
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">AI Command</h1>
                   <p className="text-xs text-gray-500">Sales & Service</p>
+                  <div className="mt-2">
+                    <button
+                      onClick={() => {
+                        // eslint-disable-next-line no-console
+                        console.log('[MainLayout] header toggle clicked - previous role:', role);
+                        setRole(role === 'admin' ? 'employee' : 'admin');
+                      }}
+                      className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200"
+                      data-role-toggle-main="true"
+                    >
+                      {role === 'admin' ? 'Switch to Employee' : 'Switch to Admin'}
+                    </button>
+                  </div>
                 </div>
                 <button
                   onClick={() => setSidebarOpen(false)}

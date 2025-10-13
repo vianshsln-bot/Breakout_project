@@ -1,9 +1,13 @@
 
 'use client';
 import { useState, useEffect } from 'react';
-import { Phone, Search, Filter, Play } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { ApiCall as Call } from '@/lib/types';
 import { API_BASE_URL } from '@/lib/config';
+import { CallList } from './_components/call-list';
+import { CallDetails } from './_components/call-details';
+
+const CALLS_PER_PAGE = 15;
 
 export default function CallsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -11,102 +15,54 @@ export default function CallsPage() {
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    const fetchCalls = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`${API_BASE_URL}/calls/?skip=0&limit=100`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data: Call[] = await response.json();
-        setCalls(data);
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError('An unexpected error occurred');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCalls();
+    fetchMoreCalls(true);
   }, []);
 
-  const filteredCalls = calls
-    .filter(c =>
-      c.conv_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.call_intent.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .slice(0, 50);
+  const fetchMoreCalls = async (initialLoad = false) => {
+    if (loading && !initialLoad) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/calls/?skip=${initialLoad ? 0 : offset}&limit=${CALLS_PER_PAGE}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const data: Call[] = await response.json();
+      
+      if (data.length < CALLS_PER_PAGE) {
+        setHasMore(false);
+      }
+      
+      setCalls(prevCalls => initialLoad ? data : [...prevCalls, ...data]);
+      
+      if (initialLoad && data.length > 0) {
+        setSelectedCall(data[0]);
+      }
+      
+      setOffset(prevOffset => initialLoad ? CALLS_PER_PAGE : prevOffset + CALLS_PER_PAGE);
 
-  const renderCallList = () => {
-    if (loading) {
-      return (
-        <div className="space-y-3 max-h-[600px] overflow-y-auto">
-          {Array.from({ length: 5 }).map((_, i) => (
-             <div key={i} className="p-4 border-2 border-gray-200 rounded-lg h-28 animate-pulse bg-gray-50" />
-          ))}
-        </div>
-      )
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
+    } finally {
+      setLoading(false);
     }
-
-    if (error) {
-       return (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-red-500 text-center">
-            <p>Failed to load call data.</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        </div>
-      );
-    }
-    
-    return (
-        <div className="space-y-3 max-h-[600px] overflow-y-auto">
-        {filteredCalls.map((call) => (
-          <div
-            key={call.conv_id}
-            onClick={() => setSelectedCall(call)}
-            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-              selectedCall?.conv_id === call.conv_id
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-blue-300'
-            }`}
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="font-semibold text-gray-900">Conversation: {call.conv_id}</p>
-                <p className="text-sm text-gray-600">
-                  Customer ID: {call.customer_id}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500 mt-1">{Math.floor(call.duration / 60)}m {call.duration % 60}s</p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 mb-2">
-              <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">
-                {call.call_intent}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center text-xs text-gray-500">
-              <span>{new Date(call.date_time).toLocaleString()}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
   };
 
+  const filteredCalls = calls.filter(c =>
+    c.conv_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.call_intent.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 h-full">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Call Management</h1>
@@ -140,14 +96,14 @@ export default function CallsPage() {
       </div>
 
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        <div className="lg:col-span-1 bg-white rounded-lg shadow-sm p-6 flex flex-col">
           <div className="flex gap-4 mb-6">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search calls by conversation or intent..."
+                placeholder="Search calls..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -159,61 +115,20 @@ export default function CallsPage() {
             </button>
           </div>
 
-          {renderCallList()}
+          <div className="flex-1 overflow-y-auto">
+            <CallList 
+              calls={filteredCalls}
+              selectedCall={selectedCall}
+              onSelectCall={setSelectedCall}
+              loading={loading}
+              error={error}
+            />
+          </div>
 
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          {selectedCall ? (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-gray-900">Call Details</h3>
-                <button className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                  <Play className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Customer ID</p>
-                  <p className="font-semibold text-gray-900">{selectedCall.customer_id}</p>
-                </div>
-                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Conversation ID</p>
-                  <p className="font-semibold text-gray-900">{selectedCall.conv_id}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Intent</p>
-                  <p className="font-semibold text-gray-900">{selectedCall.call_intent}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Duration</p>
-                  <p className="font-semibold text-gray-900">
-                    {Math.floor(selectedCall.duration / 60)}m {selectedCall.duration % 60}s
-                  </p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">Transcript</p>
-                  <div className="p-3 bg-gray-50 rounded text-xs text-gray-700 max-h-40 overflow-y-auto">
-                    {selectedCall.transcript}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-gray-200">
-                  <p className="text-sm text-gray-600 mb-1">Credits Consumed</p>
-                  <p className="font-bold text-gray-900">{selectedCall.credits_consumed.toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center py-12">
-              <Phone className="w-16 h-16 text-gray-300 mb-4" />
-              <p className="text-gray-500">Select a call to view details</p>
-            </div>
-          )}
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
+          <CallDetails selectedCall={selectedCall} />
         </div>
       </div>
     </div>
