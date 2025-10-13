@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { Phone, AlertTriangle } from 'lucide-react';
@@ -68,7 +67,7 @@ export default function DashboardPage() {
         const data: KpiApiResponse = await response.json();
         const kpis = data.kpis;
 
-        const kpiConfig: { id: keyof typeof kpis; label: string; target: string; higherIsBetter: boolean, unit: 'percentage' | 'seconds' | 'number' | 'rating' }[] = [
+        const kpiConfig: { id: 'first_call_resolution_pct' | 'avg_call_duration_sec' | 'call_abandon_rate_pct' | 'customer_satisfaction_avg_rating' | 'missed_calls' | 'customer_conversion_rate_pct' | 'overall_quality_score' | 'positive_sentiment_rate_pct'; label: string; target: string; higherIsBetter: boolean, unit: 'percentage' | 'seconds' | 'number' | 'rating' }[] = [
             { id: 'first_call_resolution_pct', label: 'First Call Resolution', target: '>90%', higherIsBetter: true, unit: 'percentage' },
             { id: 'avg_call_duration_sec', label: 'Avg Call Duration', target: '<5 min', higherIsBetter: false, unit: 'seconds' },
             { id: 'call_abandon_rate_pct', label: 'Call Abandon Rate', target: '<5%', higherIsBetter: false, unit: 'percentage' },
@@ -110,7 +109,7 @@ export default function DashboardPage() {
                     displayValue = value.toString();
                     status = config.higherIsBetter
                       ? (value >= targetValue ? 'good' : 'warning')
-                      : (value <= targetValue ? 'good' : (value > 0 ? 'warning' : 'critical'));
+                      : (value <= targetValue ? 'good' : 'warning');
                     if (config.id === 'missed_calls' && value > 0) status = 'critical';
 
             }
@@ -125,6 +124,60 @@ export default function DashboardPage() {
                 sparklineData: sparklineData,
             };
         });
+        
+        // const mappedKpis = kpiConfig.map(config => {
+        //     const value = kpis[config.id];
+            
+        //     if (typeof value !== 'number') {
+        //         // This dashboard component only handles numeric KPIs.
+        //         // We will filter out any non-numeric ones.
+        //         return null;
+        //     }
+
+        //     const sparklineData = generateSparklineData(value);
+        //     const trend = getTrend(sparklineData);
+
+        //     let displayValue: string;
+        //     let status: 'good' | 'warning' | 'critical';
+
+        //     const targetValue = parseFloat(config.target.replace(/[^\d.-]/g, ''));
+
+        //     switch (config.unit) {
+        //         case 'percentage':
+        //             displayValue = `${value.toFixed(1)}%`;
+        //             status = config.higherIsBetter 
+        //                 ? (value >= targetValue ? 'good' : 'warning') 
+        //                 : (value <= targetValue ? 'good' : 'warning');
+        //             break;
+        //         case 'seconds':
+        //             displayValue = formatDurationFromSeconds(value);
+        //              status = config.higherIsBetter 
+        //                 ? (value >= targetValue * 60 ? 'good' : 'warning') 
+        //                 : (value <= targetValue * 60 ? 'good' : 'warning');
+        //             break;
+        //         case 'rating':
+        //             displayValue = `${value.toFixed(1)}/5`;
+        //             status = value >= targetValue ? 'good' : 'warning';
+        //             break;
+        //         default: // number
+        //             displayValue = value.toString();
+        //             status = config.higherIsBetter
+        //               ? (value >= targetValue ? 'good' : 'warning')
+        //               : (value <= targetValue ? 'good' : 'warning');
+        //             if (config.id === 'missed_calls' && value > 0) status = 'critical';
+
+        //     }
+
+        //     return {
+        //         id: config.id,
+        //         label: config.label,
+        //         value: displayValue,
+        //         target: config.target,
+        //         trend: trend,
+        //         status: status,
+        //         sparklineData: sparklineData,
+        //     };
+        // }).filter((k): k is KPIMetric => k !== null);
 
         setKpiMetrics(mappedKpis);
 

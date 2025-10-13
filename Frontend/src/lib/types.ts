@@ -37,6 +37,33 @@ export interface KpiApiResponse {
     customer_conversion_rate_pct: number;
     overall_quality_score: number;
     customer_satisfaction_avg_rating: number;
+    
+    // Customers
+    total_customers: number;
+    new_customers: number;
+    avg_spend_per_customer: number;
+    top_customer_locations: string;
+    
+    // Leads
+    total_leads_generated: number;
+    lead_conversion_rate_pct: number;
+    lead_response_time_sec: number;
+    lead_source_effectiveness: string;
+    qualified_lead_ratio_pct: number;
+
+    // Bookings
+    total_bookings: number;
+    booking_conversion_rate_pct: number;
+    avg_booking_value: number;
+    cancellation_rate_pct: number;
+    repeat_booking_rate_pct: number;
+
+    // Payment Analytics
+    total_revenue_collected: number;
+    pending_payments: number;
+    avg_payment_value: number;
+    revenue_growth_rate_pct: number;
+    refund_chargeback_rate_pct: number;
   };
 }
 

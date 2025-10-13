@@ -89,6 +89,15 @@ function normalizeEvent(apiObj: any): Event {
 export default function CustomersHubPage() {
   const [activeTab, setActiveTab] = useState<TabType>('customers');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Filter states
+  const [leadStatusFilter, setLeadStatusFilter] = useState<string>('all');
+  const [eventStatusFilter, setEventStatusFilter] = useState<string>('all');
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
+
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -171,7 +180,9 @@ export default function CustomersHubPage() {
     const email = String(l?.Email ?? '').toLowerCase();
     const phone = String(l?.PhoneNumber ?? '').toLowerCase();
     const notes = String(l?.Notes ?? '').toLowerCase();
-    return name.includes(q) || email.includes(q) || phone.includes(q) || notes.includes(q);
+    const statusMatch = leadStatusFilter === 'all' || (l.Status || 'unknown').toLowerCase() === leadStatusFilter;
+    const searchMatch = name.includes(q) || email.includes(q) || phone.includes(q) || notes.includes(q);
+    return statusMatch && searchMatch;
   });
 
   const filteredEvents = events
@@ -182,6 +193,43 @@ export default function CustomersHubPage() {
       return type.includes(q) || notes.includes(q) || agent.includes(q);
     })
     .slice(0, 50);
+
+  const exportData = () => {
+    let data;
+    let filename;
+    switch (activeTab) {
+      case 'customers':
+        data = filteredCustomers;
+        filename = 'customers.csv';
+        break;
+      case 'leads':
+        data = filteredLeads;
+        filename = 'leads.csv';
+        break;
+      case 'events':
+        data = filteredEvents;
+        filename = 'events.csv';
+        break;
+      default:
+        return;
+    }
+
+    if (data.length === 0) {
+      console.warn("No data to export.");
+      return;
+    }
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [Object.keys(data[0]).join(","), ...data.map(item => Object.values(item).join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const renderContent = () => {
     const loading =
@@ -209,7 +257,7 @@ export default function CustomersHubPage() {
     if (activeTab === 'customers') {
       return (
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-auto">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -251,7 +299,7 @@ export default function CustomersHubPage() {
       }, {});
 
       return (
-        <div>
+        <div className="overflow-x-auto">
           <div className="grid grid-cols-4 gap-4 mb-6">
             {Object.entries(leadsByStatus).map(([status, count], idx) => (
               <div key={status ?? `lead-status-${idx}`} className="p-4 bg-gray-50 rounded-lg text-center">
@@ -261,7 +309,7 @@ export default function CustomersHubPage() {
             ))}
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-auto">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -311,7 +359,7 @@ export default function CustomersHubPage() {
     if (activeTab === 'events') {
       return (
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-auto">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer ID</th>
@@ -371,7 +419,7 @@ export default function CustomersHubPage() {
           <h1 className="text-3xl font-bold text-gray-900">Enterprise Data Hub</h1>
           <p className="text-gray-500 mt-1">Manage customers, leads, and events</p>
         </div>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+        <button onClick={exportData} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
           <Download className="w-4 h-4" />
           Export Data
         </button>
@@ -422,11 +470,35 @@ export default function CustomersHubPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
+            <button onClick={() => setShowFilters(!showFilters)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
               <Filter className="w-4 h-4" />
               Filters
             </button>
           </div>
+          {showFilters && (
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {activeTab === 'leads' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lead Status</label>
+                    <select
+                      value={leadStatusFilter}
+                      onChange={(e) => setLeadStatusFilter(e.target.value)}
+                      className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="new">New</option>
+                      <option value="unqualified">Unqualified</option>
+                    </select>
+                  </div>
+                )}
+                {/* Add other filters here */}
+              </div>
+            </div>
+          )}
           {renderContent()}
         </div>
       </div>

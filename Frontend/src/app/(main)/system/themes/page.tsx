@@ -37,7 +37,7 @@ export default function ThemesPage() {
   const renderThemes = () => {
     if (loading) {
       return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-white rounded-lg shadow-sm h-64 animate-pulse" />
           ))}
@@ -69,15 +69,15 @@ export default function ThemesPage() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Price per Person</span>
-                  <span className="font-bold text-gray-900">₹{theme.Price_per_person.toLocaleString()}</span>
+                  <span className="font-bold text-gray-900">₹{formatNumber(theme.Price_per_person)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Duration</span>
-                  <span className="font-bold text-gray-900">{theme.Duration} min</span>
+                  <span className="font-bold text-gray-900">{theme.Duration ?? '-'} min</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Min. Players</span>
-                  <span className="font-bold text-gray-900">{theme.Minimum_players}</span>
+                  <span className="font-bold text-gray-900">{theme.Minimum_players ?? '-'}</span>
                 </div>
               </div>
             </div>
@@ -86,6 +86,13 @@ export default function ThemesPage() {
       </div>
     );
   };
+
+  function formatNumber(n?: number | null) {
+    if (n === undefined || n === null) return '-';
+    const num = Number(n);
+    if (!Number.isFinite(num)) return '-';
+    return num.toLocaleString();
+  }
 
 
   return (
