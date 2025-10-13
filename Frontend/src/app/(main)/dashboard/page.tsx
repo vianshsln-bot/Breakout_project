@@ -459,14 +459,6 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-500">Active</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900">{queueWaitTime}</p>
-                  <p className="text-xs text-gray-500">Avg Wait</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900">{availableAgents}</p>
-                  <p className="text-xs text-gray-500">Available</p>
-                </div>
-                <div className="text-center">
                   <p className="text-2xl font-bold text-red-600">{missedCalls}</p>
                   <p className="text-xs text-gray-500">Missed</p>
                 </div>

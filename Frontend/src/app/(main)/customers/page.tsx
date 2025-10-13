@@ -1,20 +1,95 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { Users, Calendar, TrendingUp, Search, Filter, Download } from 'lucide-react';
 import { Customer, Lead, Event } from '@/lib/types';
 import { API_BASE_URL } from '@/lib/config';
 
-// Mock data will be used for events until APIs are ready
-// import { events as staticEvents } from '@/lib/data';
-
-
 type TabType = 'customers' | 'leads' | 'events';
+
+/**
+ * Normalizers: convert API objects (possibly snake_case) -> shapes our UI expects.
+ * They are defensive: handle missing keys, nulls and multiple possible key names.
+ */
+function pickString(obj: any, ...keys: string[]) {
+  for (const k of keys) {
+    const v = obj?.[k];
+    if (v !== undefined && v !== null && String(v) !== '') return String(v);
+  }
+  return '';
+}
+
+function pickNumber(obj: any, ...keys: string[]) {
+  for (const k of keys) {
+    const v = obj?.[k];
+    if (v === undefined || v === null || v === '') continue;
+    const n = Number(v);
+    if (!Number.isNaN(n)) return n;
+  }
+  return undefined;
+}
+
+function safeDateString(value: any) {
+  try {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value); // fallback to raw string
+    return d.toLocaleDateString();
+  } catch {
+    return String(value ?? '');
+  }
+}
+
+function normalizeCustomer(apiObj: any): Customer {
+  // map various possible key names to our Customer type fields
+  return {
+    Customer_ID:
+      pickNumber(apiObj, 'customer_id', 'Customer_ID', 'id', 'customerId') ?? undefined,
+    Name: pickString(apiObj, 'name', 'Name', 'full_name', 'fullName'),
+    Email: pickString(apiObj, 'email', 'Email', 'email_address'),
+    PhoneNumber: pickString(apiObj, 'phone_number', 'phonenumber', 'PhoneNumber', 'phone'),
+    Original_Lead_ID:
+      pickNumber(apiObj, 'original_lead_id', 'Original_Lead_ID', 'originalLeadId', 'lead_id') ??
+      undefined,
+    CustomerSince: pickString(apiObj, 'customer_since', 'CustomerSince', 'customer_since_at', 'created_at') || '',
+    // keep raw object in case you later need additional fields
+    _raw: apiObj,
+  } as any;
+}
+
+function normalizeLead(apiObj: any): Lead {
+  return {
+    Lead_ID: pickNumber(apiObj, 'lead_id', 'Lead_ID', 'id') ?? undefined,
+    Name: pickString(apiObj, 'name', 'Name', 'full_name'),
+    Email: pickString(apiObj, 'email', 'Email', 'email_address'),
+    PhoneNumber: pickString(apiObj, 'phone_number', 'phonenumber', 'PhoneNumber', 'phone'),
+    Status: pickString(apiObj, 'status', 'Status').toLowerCase() || 'unknown',
+    LeadType: pickString(apiObj, 'lead_type', 'LeadType', 'type'),
+    Priority: pickString(apiObj, 'priority', 'Priority'),
+    Source: pickString(apiObj, 'source', 'Source'),
+    Notes: pickString(apiObj, 'notes', 'Notes'),
+    CreatedAt: pickString(apiObj, 'created_at', 'CreatedAt', 'createdAt'),
+    _raw: apiObj,
+  } as any;
+}
+
+function normalizeEvent(apiObj: any): Event {
+  return {
+    Event_ID: pickNumber(apiObj, 'event_id', 'Event_ID', 'id') ?? undefined,
+    Customer_ID: pickNumber(apiObj, 'customer_id', 'Customer_ID') ?? undefined,
+    Event_type: pickString(apiObj, 'event_type', 'Event_type', 'type'),
+    Notes: pickString(apiObj, 'notes', 'Notes', 'description'),
+    Proposed_date: pickString(apiObj, 'proposed_date', 'Proposed_date', 'proposedDate', 'date'),
+    Guest_count: pickNumber(apiObj, 'guest_count', 'Guest_count', 'guestCount') ?? undefined,
+    Agent_ID: pickNumber(apiObj, 'agent_id', 'Agent_ID', 'agentId') ?? undefined,
+    Status: pickString(apiObj, 'status', 'Status').toLowerCase() || 'unknown',
+    _raw: apiObj,
+  } as any;
+}
 
 export default function CustomersHubPage() {
   const [activeTab, setActiveTab] = useState<TabType>('customers');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -24,116 +99,93 @@ export default function CustomersHubPage() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-useEffect(() => {
+  useEffect(() => {
+    let cancelled = false;
     const fetchData = async () => {
-      // Log when the data fetching starts
-      console.log('Attempting to fetch customers and leads...');
-      
+      setError(null);
       setLoadingCustomers(true);
       setLoadingLeads(true);
-      setError(null);
+      setLoadingEvents(true);
 
       try {
         const [customersResponse, leadsResponse, eventsResponse] = await Promise.all([
           fetch(`${API_BASE_URL}/customers/?skip=0&limit=100`),
           fetch(`${API_BASE_URL}/leads/?skip=0&limit=100`),
-          fetch(`${API_BASE_URL}/events/?skip=0&limit=100`)
+          fetch(`${API_BASE_URL}/events/?skip=0&limit=100`),
         ]);
 
-        // Log the raw responses to check status, headers, etc.
-        console.log('Customers API Response:', customersResponse);
-        console.log('Leads API Response:', leadsResponse);
-        console.log('Events API Response:', eventsResponse);
+        if (!customersResponse.ok) throw new Error(`HTTP ${customersResponse.status} on customers`);
+        if (!leadsResponse.ok) throw new Error(`HTTP ${leadsResponse.status} on leads`);
+        if (!eventsResponse.ok) throw new Error(`HTTP ${eventsResponse.status} on events`);
 
-        if (!customersResponse.ok) {
-          // Log the specific error before throwing
-          console.error('Customer fetch failed with status:', customersResponse.status);
-          throw new Error(`HTTP error! Status: ${customersResponse.status} on customers`);
-        }
-        const customersData = await customersResponse.json();
-        
-        // Log the actual data if retrieval is successful
-        console.log('Successfully retrieved Customers Data:', customersData);
-        setCustomers(customersData);
+        const [customersDataRaw, leadsDataRaw, eventsDataRaw] = await Promise.all([
+          customersResponse.json(),
+          leadsResponse.json(),
+          eventsResponse.json(),
+        ]);
+
+        if (cancelled) return;
+
+        // Defensive: if API returns single object instead of array, coerce to array
+        const customersArray = Array.isArray(customersDataRaw) ? customersDataRaw : [customersDataRaw];
+        const leadsArray = Array.isArray(leadsDataRaw) ? leadsDataRaw : [leadsDataRaw];
+        const eventsArray = Array.isArray(eventsDataRaw) ? eventsDataRaw : [eventsDataRaw];
+
+        const normalizedCustomers = customersArray.map(normalizeCustomer);
+        const normalizedLeads = leadsArray.map(normalizeLead);
+        const normalizedEvents = eventsArray.map(normalizeEvent);
+
+        setCustomers(normalizedCustomers);
+        setLeads(normalizedLeads);
+        setEvents(normalizedEvents);
+
         setLoadingCustomers(false);
-        
-        if (!leadsResponse.ok) {
-          // Log the specific error before throwing
-          console.error('Leads fetch failed with status:', leadsResponse.status);
-          throw new Error(`HTTP error! Status: ${leadsResponse.status} on leads`);
-        }
-        const leadsData = await leadsResponse.json();
-        
-        
-        // Log the actual data if retrieval is successful
-        console.log('Successfully retrieved Leads Data:', leadsData);
-        setLeads(leadsData);
         setLoadingLeads(false);
-
-
-        if (!eventsResponse.ok) {
-          // Log the specific error before throwing
-          console.error('Leads fetch failed with status:', leadsResponse.status);
-          throw new Error(`HTTP error! Status: ${leadsResponse.status} on leads`);
-        }
-        const eventsdata = await eventsResponse.json();
-        
-        
-        // Log the actual data if retrieval is successful
-        console.log('Successfully retrieved events Data:', eventsdata); 
-        setEvents(eventsdata);
         setLoadingEvents(false);
-        // customersData.forEach((c: { name: any; email: any; }) => {
-        //   if (!c.name || !c.email) console.log("Bad customer:", c);
-        //   else console.log("good",c)
-        // });
-        // leadsData.forEach((l: { name: any; email: any; }) => {
-        //   if (!l.name || !l.email) console.log("Bad lead:", l);
-        //   else console.log("good",l)
-
-        // });
-        // eventsdata.forEach((e: { event_type: any; notes: any; }) => {
-        //   if (!e.event_type || !e.notes) console.log("Bad event:", e);
-        //   else console.log("good",e)
-        // });
-
       } catch (err) {
-        // Log the full error object to the console for detailed inspection
-        console.error('An error occurred during the fetch process:', err);
-        
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError('An unexpected error occurred');
-        }
-
-        setLoadingEvents(false)
+        console.error('❌ Error fetching data:', err);
+        setError(err instanceof Error ? err.message : 'Unexpected error');
         setLoadingCustomers(false);
         setLoadingLeads(false);
+        setLoadingEvents(false);
       }
     };
 
     fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const filteredCustomers = customers.filter(c =>
-    c.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.Email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const q = String(searchTerm ?? '').toLowerCase();
 
-  const filteredLeads = leads.filter(l =>
-    l.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    l.Email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCustomers = customers.filter((c) => {
+    const name = String(c?.Name ?? '').toLowerCase();
+    const email = String(c?.Email ?? '').toLowerCase();
+    const phone = String(c?.PhoneNumber ?? '').toLowerCase();
+    return name.includes(q) || email.includes(q) || phone.includes(q);
+  });
 
-  const filteredEvents = events.filter(e =>
-    e.Event_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.Notes.toLowerCase().includes(searchTerm.toLowerCase())
-  ).slice(0, 50);
-  
+  const filteredLeads = leads.filter((l) => {
+    const name = String(l?.Name ?? '').toLowerCase();
+    const email = String(l?.Email ?? '').toLowerCase();
+    const phone = String(l?.PhoneNumber ?? '').toLowerCase();
+    const notes = String(l?.Notes ?? '').toLowerCase();
+    return name.includes(q) || email.includes(q) || phone.includes(q) || notes.includes(q);
+  });
+
+  const filteredEvents = events
+    .filter((e) => {
+      const type = String(e?.Event_type ?? '').toLowerCase();
+      const notes = String(e?.Notes ?? '').toLowerCase();
+      const agent = String(e?.Agent_ID ?? '').toLowerCase();
+      return type.includes(q) || notes.includes(q) || agent.includes(q);
+    })
+    .slice(0, 50);
 
   const renderContent = () => {
-    const loading = activeTab === 'customers' ? loadingCustomers : activeTab === 'leads' ? loadingLeads : false;
+    const loading =
+      activeTab === 'customers' ? loadingCustomers : activeTab === 'leads' ? loadingLeads : loadingEvents;
 
     if (loading) {
       return (
@@ -144,19 +196,19 @@ useEffect(() => {
     }
 
     if (error) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <div className="text-red-500 text-center">
-                    <p>Failed to load data.</p>
-                    <p className="text-sm">{error}</p>
-                </div>
-            </div>
-        );
+      return (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-red-500 text-center">
+            <p>Failed to load data.</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      );
     }
 
     if (activeTab === 'customers') {
       return (
-          <div className="overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -165,88 +217,97 @@ useEffect(() => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lead ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Since</th>
-                
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredCustomers.map((customer) => (
-                <tr key={customer.Customer_ID} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{customer.Name}</p>
+              {filteredCustomers.map((customer, idx) => (
+                <tr
+                  key={customer.Customer_ID ?? `customer-${customer.Email ?? idx}-${idx}`}
+                  className="hover:bg-gray-50 cursor-pointer"
+                >
+                  <td className="px-4 py-3 font-medium text-gray-900">{customer.Name || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{customer.Email || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{customer.PhoneNumber || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {customer.Original_Lead_ID ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{customer.Email}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{customer.PhoneNumber}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{customer.Original_Lead_ID}</td>
-                  <td className="px-4 py-3 text-sm">{new Date(customer.CustomerSince).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {customer.CustomerSince ? safeDateString(customer.CustomerSince) : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {filteredCustomers.length === 0 && <p className="text-center text-gray-500 mt-4">No customers found.</p>}
         </div>
-      )
+      );
     }
 
     if (activeTab === 'leads') {
-      const leadsByStatus = leads.reduce((acc, lead) => {
-        acc[lead.Status] = (acc[lead.Status] || 0) + 1;
+      const leadsByStatus = leads.reduce((acc: Record<string, number>, lead) => {
+        const st = (lead.Status || 'unknown').toLowerCase();
+        acc[st] = (acc[st] || 0) + 1;
         return acc;
-      }, {} as Record<string, number>);
+      }, {});
 
       return (
         <div>
           <div className="grid grid-cols-4 gap-4 mb-6">
-            {Object.entries(leadsByStatus).map(([status, count]) => (
-              <div key={status} className="p-4 bg-gray-50 rounded-lg text-center">
+            {Object.entries(leadsByStatus).map(([status, count], idx) => (
+              <div key={status ?? `lead-status-${idx}`} className="p-4 bg-gray-50 rounded-lg text-center">
                 <p className="text-2xl font-bold text-gray-900">{count}</p>
                 <p className="text-xs text-gray-600 mt-1 capitalize">{status}</p>
               </div>
             ))}
           </div>
-           <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lead Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lead Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredLeads.map((lead, idx) => (
+                  <tr key={lead.Lead_ID ?? `lead-${lead.Email ?? idx}-${idx}`} className="hover:bg-gray-50 cursor-pointer">
+                    <td className="px-4 py-3 font-medium text-gray-900">{lead.Name || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      <div>
+                        <p>{lead.Email || '—'}</p>
+                        <p className="text-xs text-gray-500">{lead.PhoneNumber || '—'}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{lead.Source || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{lead.LeadType || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{lead.Priority || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                          lead.Status === 'won'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : lead.Status === 'lost'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {lead.Status}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredLeads.map((lead) => (
-                    <tr key={lead.Lead_ID} className="hover:bg-gray-50 cursor-pointer">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{lead.Name}</p>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        <div>
-                          <p>{lead.Email}</p>
-                          <p className="text-xs text-gray-500">{lead.PhoneNumber}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{lead.Source}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{lead.LeadType}</td>
-                       <td className="px-4 py-3 text-sm text-gray-600">{lead.Priority}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
-                          lead.Status === 'won' ? 'bg-emerald-100 text-emerald-800' :
-                          lead.Status === 'lost' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {lead.Status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+            {filteredLeads.length === 0 && <p className="text-center text-gray-500 mt-4">No leads found.</p>}
+          </div>
         </div>
       );
     }
-    
+
     if (activeTab === 'events') {
       return (
         <div className="overflow-x-auto">
@@ -263,24 +324,33 @@ useEffect(() => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredEvents.map((event) => (
-                <tr key={event.Event_ID} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="px-4 py-3 font-medium text-gray-900">{event.Customer_ID}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{event.Event_type}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{event.Notes}</td>
+              {filteredEvents.map((event, idx) => (
+                <tr
+                  key={event.Event_ID ?? `event-${event.Customer_ID ?? idx}-${idx}`}
+                  className="hover:bg-gray-50 cursor-pointer"
+                >
+                  <td className="px-4 py-3 font-medium text-gray-900">{event.Customer_ID ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{event.Event_type || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{event.Notes || '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(event.Proposed_date).toLocaleDateString()}
+                    {event.Proposed_date ? safeDateString(event.Proposed_date) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{event.Guest_count} </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{event.Agent_ID} </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{event.Guest_count ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{event.Agent_ID ?? '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      event.Status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
-                      event.Status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                      event.Status === 'proposed' ? 'bg-gray-100 text-gray-800' :
-                      event.Status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        event.Status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : event.Status === 'confirmed'
+                          ? 'bg-blue-100 text-blue-800'
+                          : event.Status === 'proposed'
+                          ? 'bg-gray-100 text-gray-800'
+                          : event.Status === 'cancelled'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       {event.Status}
                     </span>
                   </td>
@@ -288,10 +358,11 @@ useEffect(() => {
               ))}
             </tbody>
           </table>
+          {filteredEvents.length === 0 && <p className="text-center text-gray-500 mt-4">No events found.</p>}
         </div>
       );
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -312,9 +383,7 @@ useEffect(() => {
             <button
               onClick={() => setActiveTab('customers')}
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'customers'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'customers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <Users className="w-4 h-4 inline mr-2" />
@@ -323,9 +392,7 @@ useEffect(() => {
             <button
               onClick={() => setActiveTab('leads')}
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'leads'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'leads' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <TrendingUp className="w-4 h-4 inline mr-2" />
@@ -334,9 +401,7 @@ useEffect(() => {
             <button
               onClick={() => setActiveTab('events')}
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'events'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'events' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <Calendar className="w-4 h-4 inline mr-2" />
