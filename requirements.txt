@@ -1,9 +1,11 @@
 # Web Framework & Server
 fastapi
 uvicorn[standard]
+requests
 
 # Supabase Client 
 supabase
+
 
 # Data Validation & Settings Management
 pydantic
