@@ -84,15 +84,15 @@ def get_availability(
 ):
     try:
         # Use matchingslots when participant categories are specified
-        participants = create_participants_data(adults=adults, children=children)
-        if (adults or children) and product_id:
-            return bookeo.get_matching_slots(
-                start_time=start_time,
-                end_time=end_time,
-                product_id=product_id,
-                participants=participants,
-                lang=lang,
-            )
+        # participants = create_participants_data(adults=adults, children=children)
+        # if (adults or children) and product_id:
+        #     return bookeo.get_matching_slots(
+        #         start_time=start_time,
+        #         end_time=end_time,
+        #         product_id=product_id,
+        #         participants=participants,
+        #         lang=lang,
+        #     )
         # Fallback to generic slots (no per-category counts)
         return bookeo.get_available_slots(
             start_time=start_time,
