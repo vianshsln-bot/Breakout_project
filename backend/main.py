@@ -43,6 +43,8 @@ app.add_middleware(
 
 # Include the routers into the main application.
 # The endpoints defined in these routers will be accessible under their specified prefixes.
+
+app.include_router(bookeo_router.router)
 app.include_router(booking_router.router)
 app.include_router(branch_router.router)
 app.include_router(call_analysis_router.router)
@@ -59,7 +61,6 @@ app.include_router(scripts_router.router)
 app.include_router(slot_router.router)
 app.include_router(theme_router.router)
 app.include_router(compute_router.router)
-app.include_router(bookeo_router.router)
 # Add other routers here as you create them...
 # e.g., app.include_router(customer_router.router)
 
