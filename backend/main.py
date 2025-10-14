@@ -68,6 +68,6 @@ app.include_router(bookeo_router.router)
 @app.get("/", tags=["Root"])
 async def read_root():
     """
-    A simple root endpoint to confirm the API is running.
+    A root endpoint to confirm the API is running.
     """
     return {"message": "Welcome! The Call & Booking Analytics API is running."}
