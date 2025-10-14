@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import your routers from the 'routers' directory
 from backend.models.followup_model import FollowUp
-from backend.routers import branch_router, call_analysis_router, call_router, consumption_router, customer_router, employee_router, booking_router, event_router, followup_router, lead_router, linktracker_router, payment_router, scripts_router, slot_router, theme_router, compute_router,Mcp_server
+from backend.routers import branch_router, call_analysis_router, call_router, consumption_router, customer_router, employee_router, booking_router, event_router, followup_router, lead_router, linktracker_router, payment_router, scripts_router, slot_router, theme_router, compute_router,bookeo_router
 
 # ----------------- App Initialization -----------------
 
@@ -59,8 +59,7 @@ app.include_router(scripts_router.router)
 app.include_router(slot_router.router)
 app.include_router(theme_router.router)
 app.include_router(compute_router.router)
-app.include_router(Mcp_server.router)
-
+app.include_router(bookeo_router.router)
 # Add other routers here as you create them...
 # e.g., app.include_router(customer_router.router)
 
