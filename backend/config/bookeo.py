@@ -7,8 +7,8 @@ import logging
 import time
 import os
 
-from dotenv import load_dotenv
-load_dotenv("backend/config/keys.env")
+# from dotenv import load_dotenv
+# load_dotenv("backend/config/keys.env")
 
 
 class BookeoAPI:
