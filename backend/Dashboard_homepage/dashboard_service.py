@@ -25,7 +25,6 @@ def get_calls_trend():
 
 # --- 2. Bookings Trend ---
 from collections import defaultdict
-from supabase_client import supabase
 
 def get_bookings_trend():
     # Fetch start_time and status columns from the bookings table
