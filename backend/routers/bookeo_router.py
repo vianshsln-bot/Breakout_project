@@ -452,7 +452,6 @@ def refresh_bookings(bookeo: BookeoAPI = Depends(get_bookeo_client)):
             "customer_id": booking["customerId"],
             "status": "canceled" if booking.get("canceled", False) else "active",
             "creation_time": booking["creationTime"],
-            "last_change_time": booking.get("lastChangeTime")
         } for booking in all_bookings
     ]
 
