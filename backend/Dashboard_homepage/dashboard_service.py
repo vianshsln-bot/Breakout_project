@@ -24,25 +24,35 @@ def get_calls_trend():
     return {"dates": list(daily_counts.keys()), "calls": list(daily_counts.values())}
 
 # --- 2. Bookings Trend ---
+from collections import defaultdict
+from supabase_client import supabase
+
 def get_bookings_trend():
-    query = supabase.table("bookings").select("booking_date, booking_status, payment_id").execute()
+    # Fetch start_time and status columns from the bookings table
+    query = supabase.table("bookings").select("start_time, status").execute()
     bookings = query.data or []
 
-    result = defaultdict(lambda: {"bookings": 0, "revenue": 0})
-    for b in bookings:
-        if b["booking_status"].lower() == "booked":
-            date_str = b["booking_date"][:10]
-            result[date_str]["bookings"] += 1
-            if b["payment_id"]:
-                payment = supabase.table("payment").select("payment_amount").eq("payment_id", b["payment_id"]).execute()
-                if payment.data:
-                    result[date_str]["revenue"] += float(payment.data[0]["payment_amount"])
+    # Dictionary to hold count of bookings per date
+    daily_counts = defaultdict(int)
 
+    for b in bookings:
+        start_time = b.get("start_time")
+        status = b.get("status", "").lower()
+
+        if not start_time or not status:
+            continue  # Skip if data is incomplete
+
+        if status == "booked":
+            # Extract date (YYYY-MM-DD) from ISO timestamp format "2019-08-24T14:15:22Z"
+            date_str = start_time.split("T")[0]
+            daily_counts[date_str] += 1
+
+    # Return structured response for frontend use
     return {
-        "dates": list(result.keys()),
-        "bookings": [v["bookings"] for v in result.values()],
-        "revenue": [v["revenue"] for v in result.values()]
+        "dates": list(daily_counts.keys()),
+        "bookings": list(daily_counts.values())
     }
+
 
 # --- 3. Lead Funnel ---
 def get_lead_funnel():
