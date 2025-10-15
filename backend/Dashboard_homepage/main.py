@@ -11,10 +11,7 @@ app = FastAPI(
 # CORS setup
 # -------------------
 origins = [
-    "*",  # allow all origins (for testing); replace with specific URLs in production
-    # "https://yourfrontend.com",
-    # "http://localhost:3000"
-]
+    "*"
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,7 +22,7 @@ app.add_middleware(
 )
 
 # Include Dashboard Router
-app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
+app.include_router(dashboard_router)
 
 # Root route
 @app.get("/")
