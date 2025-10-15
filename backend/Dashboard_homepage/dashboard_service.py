@@ -25,7 +25,7 @@ def get_calls_trend():
 
 # --- 2. Bookings Trend ---
 def get_bookings_trend():
-    query = supabase.table("booking").select("booking_date, booking_status, payment_id").execute()
+    query = supabase.table("bookings").select("booking_date, booking_status, payment_id").execute()
     bookings = query.data or []
 
     result = defaultdict(lambda: {"bookings": 0, "revenue": 0})
