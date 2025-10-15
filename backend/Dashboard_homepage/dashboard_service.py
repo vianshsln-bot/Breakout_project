@@ -1,4 +1,4 @@
-from config.supabase_client import supabase
+from supabase_client import supabase
 from datetime import datetime
 from collections import defaultdict
 
