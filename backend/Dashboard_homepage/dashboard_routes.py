@@ -20,7 +20,7 @@ def calls_trend():
     try:
         return get_calls_trend()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=600, detail=str(e))
 
 @router.get("/bookings-trend")
 def bookings_trend():
