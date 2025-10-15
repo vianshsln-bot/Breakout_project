@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from Dashboard_homepage.dashboard_routes import router as dashboard_router
+from dashboard_routes import router as dashboard_router
 
 app = FastAPI(
     title="Escape Room Dashboard",
