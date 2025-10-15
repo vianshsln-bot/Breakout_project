@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from services.dashboard_service import (
+from dashboard_service import (
     get_calls_trend,
     get_bookings_trend,
     get_lead_funnel,
