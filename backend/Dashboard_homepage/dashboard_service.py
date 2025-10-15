@@ -54,10 +54,10 @@ def get_lead_sources():
 
 # --- 5. Customer Growth ---
 def get_customer_growth():
-    customers = supabase.table("customers").select("customersince").execute().data or []
+    customers = supabase.table("customers").select("customer_since").execute().data or []
     daily_new = defaultdict(int)
     for c in customers:
-        date_str = c["customersince"][:10]
+        date_str = c["customer_since"][:10]
         daily_new[date_str] += 1
 
     total = 0
