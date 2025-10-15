@@ -305,6 +305,8 @@ class BookeoAPI:
         return self._make_request('GET', f'/bookings/{booking_id}', params=params)
 
     def get_bookings(self, 
+                    lastUpdatedStartTime: str,
+                    lastUpdatedEndTime:str, 
                     start_time: str = None,
                     end_time: str = None,
                     last_updated: str = None,
@@ -339,15 +341,13 @@ class BookeoAPI:
             params['pageNumber'] = page_number
         else:
             # Initial request parameters
-            params['pageSize'] = min(page_size, 100)  # Bookeo limits to 100
-            params['pageNumber'] = page_number
-
+            params['includeCanceled'] = True
+            params['lastUpdatedStartTime']=lastUpdatedStartTime
+            params['lastUpdatedEndTime']=lastUpdatedEndTime
             if start_time:
                 params['startTime'] = start_time
             if end_time:
                 params['endTime'] = end_time
-            if last_updated:
-                params['lastUpdated'] = last_updated
             if created_time:
                 params['createdTime'] = created_time
 
@@ -397,7 +397,7 @@ class BookeoAPI:
         Create a new customer.
 
         Args:
-            customer_data (dict): Customer information
+            customer_data (dict): Customer informatiojn
             lang (str): Language code
 
         Returns:

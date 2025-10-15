@@ -1,0 +1,27 @@
+import requests
+
+
+BOOKEO_API_KEY = "APWWRRWKU9W3AF3CHL4HP42561FNJAHE199BD991DE1"  
+BOOKEO_SECRET_KEY = "GWh0L1oaL2rjqP7JRfwn6ghwc0hJQo6P"
+
+def test_bookings():
+    url = "https://api.bookeo.com/v2/bookings"
+    params = {
+        "lastUpdatedStartTime": "2025-10-01T00:00:00+00:00",
+        "lastUpdatedEndTime": "2025-11-01T00:00:00+00:00",
+        "itemsPerPage": 5,
+        "pageNumber": 1,
+        "lang": "en-US"
+    }
+    headers = {
+        "X-Bookeo-apiKey": BOOKEO_API_KEY,
+        "X-Bookeo-secretKey": BOOKEO_SECRET_KEY,
+        "Content-Type": "application/json"
+    }
+    resp = requests.get(url, headers=headers, params=params)
+    print(resp.status_code)
+    print(resp.text)
+
+# Call test_bookings()
+
+test_bookings()

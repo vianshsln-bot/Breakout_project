@@ -3,6 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 import requests
+import time
+from datetime import datetime, timedelta,timezone
+from backend.config.supabase_client import supabase
 
 # Assume your BookeoAPI class and helper functions are importable
 from backend.config.bookeo import BookeoAPI, create_customer_data, create_participants_data, create_payment_data
@@ -43,7 +46,7 @@ class BookingHoldCreate(BaseModel):
     lang: str = "en-US"
 
 class PaymentItem(BaseModel):
-    amount: str = "1400"
+    amount: str = "100"
     currency: str = "INR"
     reason: str = "Initial payment"
     comment: str = ""
@@ -84,15 +87,15 @@ def get_availability(
 ):
     try:
         # Use matchingslots when participant categories are specified
-        # participants = create_participants_data(adults=adults, children=children)
-        # if (adults or children) and product_id:
-        #     return bookeo.get_matching_slots(
-        #         start_time=start_time,
-        #         end_time=end_time,
-        #         product_id=product_id,
-        #         participants=participants,
-        #         lang=lang,
-        #     )
+        participants = create_participants_data(adults=adults, children=children)
+        if (adults or children) and product_id:
+            return bookeo.get_matching_slots(
+                start_time=start_time,
+                end_time=end_time,
+                product_id=product_id,
+                participants=participants,
+                lang=lang,
+            )
         # Fallback to generic slots (no per-category counts)
         return bookeo.get_available_slots(
             start_time=start_time,
@@ -232,3 +235,232 @@ def cancel_booking(booking_id: str, notify_customer: bool = True, lang: str = "e
     except requests.RequestException as e:
         status = getattr(getattr(e, "response", None), "status_code", 502)
         raise HTTPException(status_code=status, detail="Failed to cancel booking")
+
+
+
+
+
+
+
+
+
+# Refresh themes from Bookeo
+@router.post("/themes/refresh")
+def refresh_themes(bookeo: BookeoAPI = Depends(get_bookeo_client)):
+    page_token = None
+
+    while True:
+        params = {}
+        if page_token:
+            params["pageNavigationToken"] = page_token
+
+        try:
+            payload = bookeo._make_request("GET", "/settings/products", params=params)
+        except requests.RequestException:
+            raise HTTPException(status_code=502, detail="Bookeo API request failed")
+
+        for theme in payload.get("data", []):
+            duration_iso = theme.get("duration", {})
+            duration_minutes = parse_iso_duration_to_minutes(duration_iso)
+
+            booking_limits = theme.get("bookingLimits", [])
+            # print(booking_limits)
+            min_limit = booking_limits[0]['min']
+            max_limit = booking_limits[0]['max']
+
+            row = {
+                "theme_id": theme["productId"],
+                "name": theme.get("name", ""),
+                "description": theme.get("description"),
+                "duration_minutes": duration_minutes,
+                "booking_limit_min": min_limit,
+                "booking_limit_max": max_limit,
+            }
+            result = supabase.table("themes").upsert(row, on_conflict="theme_id").execute()
+            if getattr(result, "status_code", 200) >= 300:
+                raise HTTPException(status_code=500, detail="Supabase upsert failed")
+
+        info = payload.get("info", {})
+        token = info.get("pageNavigationToken")
+        if not token or info.get("currentPage", 0) >= info.get("totalPages", 0):
+            break
+        page_token = token
+
+    return {"status": "completed"}
+
+
+# Helper to parse ISO 8601 duration (PTxxM) to minutes (int)
+def parse_iso_duration_to_minutes(duration_iso) -> int:
+    # Example expected format: "PT90M"
+    try:
+        return duration_iso['hours']*60+duration_iso['minutes']
+    except Exception:
+        pass
+    return 0
+
+
+
+@router.post("/customers/refresh")
+def refresh_customers(bookeo: BookeoAPI = Depends(BookeoAPI)):
+    # 1. Get last sync timestamp from Supabase
+    resp = supabase.table("customers") \
+        .select("customer_since") \
+        .order("customer_since", desc=True) \
+        .limit(1) \
+        .execute()
+
+    if getattr(resp, "status_code", 200) >= 300:
+        raise HTTPException(status_code=500, detail="Failed to query Supabase")
+
+    last_sync_str = resp.data[0]["customer_since"] if resp.data else "1970-01-01T00:00:00+00:00"
+    last_sync = datetime.fromisoformat(last_sync_str)
+    if last_sync.tzinfo is None:
+        last_sync = last_sync.replace(tzinfo=timezone.utc)
+
+    page_token = None
+    while True:
+        params = {}
+        if page_token:
+            params["pageNavigationToken"] = page_token
+        else:
+            params["createdTime"] = last_sync.isoformat()
+
+        try:
+            payload = bookeo._make_request("GET", "/customers", params=params)
+        except requests.RequestException as e:
+            raise HTTPException(status_code=502, detail=f"Bookeo API request failed: {e}")
+
+        customers_to_upsert = []
+        stop_sync = False
+
+        for cust in payload.get("data", []):
+            created = datetime.fromisoformat(cust["creationTime"])
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+
+            if created <= last_sync:
+                stop_sync = True
+                break
+
+            phone_numbers = cust.get("phoneNumbers", [])
+            phone_number = phone_numbers[0].get("number") if phone_numbers else None
+
+            row = {
+                "customer_id": cust["id"],
+                "name": f"{cust.get('firstName', '')} {cust.get('lastName', '')}".strip(),
+                "email": cust.get("emailAddress"),
+                "phone_number": phone_number,
+                "customer_since": cust["creationTime"],
+            }
+            customers_to_upsert.append(row)
+
+        if customers_to_upsert:
+            upsert_resp = supabase.table("customers") \
+                .upsert(customers_to_upsert, on_conflict="customer_id") \
+                .execute()
+            if getattr(upsert_resp, "status_code", 200) >= 300:
+                raise HTTPException(status_code=500, detail="Supabase upsert failed")
+
+        if stop_sync:
+            return {"status": "completed", "detail": "Sync complete. Reached previously synced customers."}
+
+        info = payload.get("info", {})
+        token = info.get("pageNavigationToken")
+        if not token:
+            break
+        page_token = token
+
+    return {"status": "completed", "detail": "Synced all pages."}
+
+def format_iso_for_api(dt: datetime) -> str:
+    """Formats a datetime object into an ISO string without microseconds, ending in 'Z'."""
+    return dt.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+
+@router.post("/bookings/refresh")
+def refresh_bookings(bookeo: BookeoAPI = Depends(get_bookeo_client)):
+    """
+    Refresh bookings from Bookeo incrementally using last updated time range filter.
+    Handles pagination within multiple time windows to sync all new data.
+    """
+    # 1. Get the last synced time from Supabase
+    try:
+        resp = supabase.table("bookings") \
+            .select("last_change_time") \
+            .order("last_change_time", desc=True) \
+            .limit(1) \
+            .execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to query Supabase: {e}")
+
+    last_sync_str = resp.data[0]["last_change_time"] if resp.data and resp.data[0].get("last_change_time") else None
+
+    now_utc = datetime.now(timezone.utc)
+    if last_sync_str:
+        # --- FIX 1: Make sure to handle both aware and naive timestamps correctly ---
+        parsed_dt = datetime.fromisoformat(last_sync_str.replace("Z", "+00:00"))
+        if parsed_dt.tzinfo is None:
+            last_sync = parsed_dt.replace(tzinfo=timezone.utc)
+        else:
+            last_sync = parsed_dt
+    else:
+        # If no sync time is found, default to fetching the last 31 days
+        last_sync = now_utc - timedelta(days=31)
+
+    all_bookings = []
+
+    # --- FIX 2: Corrected loop logic to handle multiple time windows ---
+    # The outer loop advances the time window.
+    while last_sync < now_utc:
+        # Calculate the end of the current 31-day chunk, ensuring it doesn't go into the future.
+        end_time = min(last_sync + timedelta(days=31), now_utc)
+
+        page_token = None
+        # The inner loop handles pagination for the current time window.
+        while True:
+            params = {
+                # --- FIX 3: Format timestamps correctly for the API ---
+                "lastUpdatedStartTime": format_iso_for_api(last_sync),
+                "lastUpdatedEndTime": format_iso_for_api(end_time)
+            }
+            if page_token:
+                params["pageNavigationToken"] = page_token
+
+            response = bookeo.get_bookings(**params)
+            data = response.get("data", [])
+            all_bookings.extend(data)
+
+            info = response.get("info", {})
+            page_token = info.get("pageNavigationToken")
+            if not page_token:
+                # No more pages in this time window, break the inner loop
+                break
+        
+        # Advance the start time for the next 31-day chunk
+        last_sync = end_time
+
+    if not all_bookings:
+        return {"status": "completed", "synced": 0, "detail": "No new bookings to sync."}
+
+    # Upsert all collected bookings into Supabase
+    formatted_bookings = [
+        {
+            "booking_id": booking["bookingNumber"],
+            "event_id": booking["eventId"],
+            "theme_id": booking["productId"],
+            "start_time": booking["startTime"],
+            "end_time": booking.get("endTime"),
+            "customer_id": booking["customerId"],
+            "status": "canceled" if booking.get("canceled", False) else "active",
+            "creation_time": booking["creationTime"],
+            "last_change_time": booking.get("lastChangeTime")
+        } for booking in all_bookings
+    ]
+
+    try:
+        supabase.table("bookings") \
+            .upsert(formatted_bookings, on_conflict="booking_id") \
+            .execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supabase upsert failed: {e}")
+
+    return {"status": "completed", "synced": len(formatted_bookings)}
