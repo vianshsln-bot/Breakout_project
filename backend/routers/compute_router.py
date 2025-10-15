@@ -31,7 +31,7 @@ def compute_kpis():
         # Fetch data from Supabase
         calls_resp = supabase.table("call").select("*").execute()
         analysis_resp = supabase.table("call_analysis").select("*").execute()
-        bookings_resp = supabase.table("booking").select("*").execute()
+        bookings_resp = supabase.table("bookings").select("*").execute()
 
         calls = calls_resp.data or []
         analysis = analysis_resp.data or []
