@@ -27,7 +27,7 @@ def read_all_themes(skip: int = 0, limit: int = Query(default=100, lte=200)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e.message)
 
 @router.get("/{theme_id}", response_model=Theme)
-def read_theme_by_id(theme_id: int):
+def read_theme_by_id(theme_id: str):
     """Retrieve a specific theme by its ID."""
     theme = theme_service.get_theme_by_id(theme_id)
     if not theme:
@@ -35,7 +35,7 @@ def read_theme_by_id(theme_id: int):
     return theme
 
 @router.patch("/{theme_id}", response_model=Theme)
-def update_existing_theme(theme_id: int, theme_data: ThemeUpdate):
+def update_existing_theme(theme_id: str, theme_data: ThemeUpdate):
     """Update an existing theme's details."""
     try:
         updated_theme = theme_service.update_theme(theme_id, theme_data)
@@ -46,7 +46,7 @@ def update_existing_theme(theme_id: int, theme_data: ThemeUpdate):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
 
 @router.delete("/{theme_id}", response_model=Theme)
-def delete_existing_theme(theme_id: int):
+def delete_existing_theme(theme_id: str):
     """Delete a theme."""
     deleted_theme = theme_service.delete_theme(theme_id)
     if not deleted_theme:

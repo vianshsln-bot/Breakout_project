@@ -312,7 +312,7 @@ def refresh_customers(bookeo: BookeoAPI = Depends(BookeoAPI)):
     if getattr(resp, "status_code", 200) >= 300:
         raise HTTPException(status_code=500, detail="Failed to query Supabase")
 
-    last_sync_str = resp.data[0]["customer_since"] if resp.data else "1970-01-01T00:00:00+00:00"
+    last_sync_str = resp.data[0]["customer_since"] if resp.data else "2000-01-01T00:00:00+00:00"
     last_sync = datetime.fromisoformat(last_sync_str)
     if last_sync.tzinfo is None:
         last_sync = last_sync.replace(tzinfo=timezone.utc)
@@ -331,16 +331,16 @@ def refresh_customers(bookeo: BookeoAPI = Depends(BookeoAPI)):
             raise HTTPException(status_code=502, detail=f"Bookeo API request failed: {e}")
 
         customers_to_upsert = []
-        stop_sync = False
-
+        # stop_sync = False
+        # print("lastsync : ",last_sync)
+        # for cust in payload.get("data"):
+        #     print(cust["firstName"]+cust["lastName"] ,"          ",cust["creationTime"])
+        # return {"status": "completed", "detail": f"Synced all pages. {payload.get("data")}"}
+    
         for cust in payload.get("data", []):
             created = datetime.fromisoformat(cust["creationTime"])
             if created.tzinfo is None:
                 created = created.replace(tzinfo=timezone.utc)
-
-            if created <= last_sync:
-                stop_sync = True
-                break
 
             phone_numbers = cust.get("phoneNumbers", [])
             phone_number = phone_numbers[0].get("number") if phone_numbers else None
@@ -361,8 +361,8 @@ def refresh_customers(bookeo: BookeoAPI = Depends(BookeoAPI)):
             if getattr(upsert_resp, "status_code", 200) >= 300:
                 raise HTTPException(status_code=500, detail="Supabase upsert failed")
 
-        if stop_sync:
-            return {"status": "completed", "detail": "Sync complete. Reached previously synced customers."}
+        # if stop_sync:
+        #     return {"status": "completed", "detail": "Sync complete. Reached previously synced customers."}
 
         info = payload.get("info", {})
         token = info.get("pageNavigationToken")
@@ -370,7 +370,7 @@ def refresh_customers(bookeo: BookeoAPI = Depends(BookeoAPI)):
             break
         page_token = token
 
-    return {"status": "completed", "detail": "Synced all pages."}
+    return {"status": "completed", "detail": f"Synced all pages.{len(customers_to_upsert)}"}
 
 def format_iso_for_api(dt: datetime) -> str:
     """Formats a datetime object into an ISO string without microseconds, ending in 'Z'."""
@@ -385,14 +385,14 @@ def refresh_bookings(bookeo: BookeoAPI = Depends(get_bookeo_client)):
     # 1. Get the last synced time from Supabase
     try:
         resp = supabase.table("bookings") \
-            .select("last_change_time") \
-            .order("last_change_time", desc=True) \
+            .select("creation_time") \
+            .order("creation_time", desc=True) \
             .limit(1) \
             .execute()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to query Supabase: {e}")
 
-    last_sync_str = resp.data[0]["last_change_time"] if resp.data and resp.data[0].get("last_change_time") else None
+    last_sync_str = resp.data[0]["creation_time"] if resp.data and resp.data[0].get("creation_time") else None
 
     now_utc = datetime.now(timezone.utc)
     if last_sync_str:
