@@ -1,4 +1,5 @@
 # routers/bookeo.py
+import json
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
@@ -10,6 +11,7 @@ from backend.config.supabase_client import supabase
 # Assume your BookeoAPI class and helper functions are importable
 from backend.config.bookeo import BookeoAPI, create_customer_data, create_participants_data, create_payment_data
 
+import re
 
 router = APIRouter(prefix="/bookeo", tags=["bookeo"])
 
@@ -167,6 +169,7 @@ def create_customer( payload:CustomerCreate ,bookeo: BookeoAPI = Depends(get_boo
             last_name=payload.last_name,
             email=payload.email,
             phone=payload.phone
+
         )
 
         return bookeo.create_customer(customer)
@@ -235,12 +238,6 @@ def cancel_booking(booking_id: str, notify_customer: bool = True, lang: str = "e
     except requests.RequestException as e:
         status = getattr(getattr(e, "response", None), "status_code", 502)
         raise HTTPException(status_code=status, detail="Failed to cancel booking")
-
-
-
-
-
-
 
 
 
@@ -438,28 +435,170 @@ def refresh_bookings(bookeo: BookeoAPI = Depends(get_bookeo_client)):
         # Advance the start time for the next 31-day chunk
         last_sync = end_time
 
+    # for booking in all_bookings:
+    #     print(json.dumps(booking,indent=4))
     if not all_bookings:
         return {"status": "completed", "synced": 0, "detail": "No new bookings to sync."}
 
-    # Upsert all collected bookings into Supabase
     formatted_bookings = [
-        {
-            "booking_id": booking["bookingNumber"],
-            "event_id": booking["eventId"],
-            "theme_id": booking["productId"],
-            "start_time": booking["startTime"],
-            "end_time": booking.get("endTime"),
-            "customer_id": booking["customerId"],
-            "status": "canceled" if booking.get("canceled", False) else "active",
-            "creation_time": booking["creationTime"],
+    {
+        "booking_id": booking["bookingNumber"],
+        "event_id": booking["eventId"],
+        "theme_id": booking["productId"],
+        "start_time": booking["startTime"],
+        "end_time": booking.get("endTime"),
+        "customer_id": booking["customerId"],
+        "status": "canceled" if booking.get("canceled", False) else "confirmed",
+        "creation_time": booking["creationTime"],
+        
+        # --- Corrected participant parsing ---
+        # Find the 'Cadults' entry, get its 'number', default to 0
+        "adults": next(
+            (item.get("number", 0) for item in booking.get("participants", {}).get("numbers", []) 
+             if item.get("peopleCategoryId") == "Cadults"), 
+            0  # Default value if 'Cadults' is not found
+        ),
+        
+        # Find the 'Cchildren' entry, get its 'number', default to 0
+        "children": next(
+            (item.get("number", 0) for item in booking.get("participants", {}).get("numbers", []) 
+             if item.get("peopleCategoryId") == "Cchildren"), # <-- Assumes 'Cchildren'
+            0  # Default value
+        ),
+        
+        # --- Corrected price parsing ---
+        # Get nested amounts, default to "0", and convert to a number
+        "total_gross": float(booking.get("price", {}).get("totalGross", {}).get("amount", "0")),
+        "total_net": float(booking.get("price", {}).get("totalNet", {}).get("amount", "0")),
+        "total_taxes": float(booking.get("price", {}).get("totalTTaxes", {}).get("amount", "0")),
+        "total_paid": float(booking.get("price", {}).get("totalPaid", {}).get("amount", "0")),
+
         } for booking in all_bookings
     ]
-
+    # print(formatted_bookings)
     try:
         supabase.table("bookings") \
             .upsert(formatted_bookings, on_conflict="booking_id") \
             .execute()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supabase upsert failed: {e}")
-
+# 
     return {"status": "completed", "synced": len(formatted_bookings)}
+
+
+@router.post("/payments/refresh")
+def refresh_payments(
+    bookeo: BookeoAPI = Depends(get_bookeo_client),
+):
+    """
+    Fetch all payments from Bookeo and upsert into the payment table.
+    Uses the last creation_time in Supabase as startTime and now as endTime.
+    """
+    try:
+        resp = supabase.table("payment").select("creation_time").order("creation_time", desc=True).limit(1).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to query Supabase: {e}")
+
+    last_sync_str = resp.data[0]["creation_time"] if resp.data and resp.data[0].get("creation_time") else None
+
+    now_utc = datetime.now(timezone.utc)
+
+    if last_sync_str:
+        parsed_dt = datetime.fromisoformat(last_sync_str.replace("Z", "+00:00"))
+        last_sync = parsed_dt if parsed_dt.tzinfo else parsed_dt.replace(tzinfo=timezone.utc)
+    else:
+       last_sync = now_utc - timedelta(days=31)
+    start_time = last_sync.astimezone(timezone.utc).isoformat(timespec='seconds')
+    end_time = now_utc.astimezone(timezone.utc).isoformat(timespec='seconds')
+    
+    page_token = None
+    total_synced = 0
+
+    while True:
+        params = {}
+        if page_token:
+            params["pageNavigationToken"] = page_token
+        if start_time:
+            params["startTime"] = start_time
+        params["endTime"] = end_time
+        print(params)
+        try:
+            payload = bookeo._make_request("GET", "/payments", params=params)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Bookeo API request failed: {str(e)}")
+
+        for payment in payload.get("data", []):
+            payment_id = payment.get("id")
+            if not payment_id:
+                continue
+
+            amount_data = payment.get("amount", {})
+            amount = float(amount_data.get("amount", 0))
+            currency = amount_data.get("currency", "INR")
+            method = payment.get("paymentMethod", "other")
+            method_other = payment.get("paymentMethodOther")
+            customer_id = payment.get("customerId")
+
+            description = payment.get("description", "")
+            booking_id = None
+            if description:
+                match = re.search(r'Booking\s+(\w+)', description, re.IGNORECASE)
+                if match:
+                    booking_id = match.group(1)
+
+            creation_str = payment.get("creationTime")
+            creation_time = None
+            if creation_str:
+                try:
+                    creation_time = datetime.fromisoformat(creation_str.replace("Z", "+00:00"))
+                except Exception:
+                    pass
+
+            received_str = payment.get("receivedTime")
+            received_time = None
+            if received_str:
+                try:
+                    received_time = datetime.fromisoformat(received_str.replace("Z", "+00:00"))
+                except Exception:
+                    pass
+
+            reason = payment.get("reason")
+            comment = payment.get("comment")
+            agent = payment.get("agent")
+            status = "completed"
+
+            row = {
+                "payment_id": payment_id,
+                "customer_id": customer_id,
+                "booking_id": booking_id,
+                "payment_amount": amount,
+                "currency": currency,
+                "payment_method": method,
+                "payment_method_other": method_other,
+                "payment_status": status,
+                "reason": reason,
+                "comment": comment,
+                "agent": agent,
+                "creation_time": creation_time.isoformat(),
+                "received_time": received_time.isoformat()
+            }
+
+            try:
+                result = supabase.table("payment").upsert(row, on_conflict="payment_id").execute()
+                if getattr(result, "status_code", 200) >= 300:
+                    raise HTTPException(status_code=500, detail="Supabase upsert failed")
+                total_synced += 1
+            except Exception as e:
+                print(f"Failed to upsert payment {payment_id}: {str(e)}")
+                continue
+
+        info = payload.get("info", {})
+        token = info.get("pageNavigationToken")
+        current_page = info.get("currentPage", 0)
+        total_pages = info.get("totalPages", 0)
+
+        if not token or current_page >= total_pages:
+            break
+        page_token = token
+
+    return {"status": "completed", "total_synced": total_synced}
