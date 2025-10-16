@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from login_models import ValidationRequest, ValidationResponse
-from login_service import validate_user_credentials
+from backend.models.login_models import ValidationRequest, ValidationResponse
+from backend.services.login_service import validate_user_credentials
 
 router = APIRouter(prefix="/validate", tags=["validation"])
 
