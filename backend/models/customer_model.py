@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import datetime
 
+
 class CustomerBase(BaseModel):
     name: str = Field(..., description="Full name of the customer.", example="John Smith")
     email: EmailStr = Field(..., description="Email address of the customer.", example="john.smith@example.com")

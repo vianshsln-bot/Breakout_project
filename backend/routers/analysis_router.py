@@ -1,147 +1,149 @@
-from fastapi import APIRouter, HTTPException, status
+# routers/kpi_router.py
+import enum
+from fastapi import APIRouter, HTTPException, Query, status
 from typing import List, Dict, Any
-from datetime import timedelta, datetime,timezone
+from datetime import timedelta, datetime, timezone
 from backend.config.supabase_client import supabase
 
 router = APIRouter(prefix="/kpis", tags=["KPIs"])
 
 
-@router.get("/overview", response_model=List[Dict[str, Any]])
-async def get_overview_kpis():
-    """
-    Returns top-level business KPIs:
-    - total_revenue
-    - total_customers
-    - customer_growth_rate (MoM)
-    - avg_revenue_per_customer
-    """
-    try:
-        # Total revenue
-        rev_res = supabase.table("payment").select("payment_amount").eq("payment_status", "completed").execute()
-        total_revenue = sum(item["payment_amount"] for item in rev_res.data)
-
-        # Total customers & new customers this month
-        now = datetime.now(tz=timezone.utc)
-        month_ago = now - timedelta(days=30)
-        cust_res = supabase.table("customers").select("customer_since").execute()
-        total_customers = len(cust_res.data)
-        new_customers = sum(1 for c in cust_res.data if datetime.fromisoformat(c["customer_since"]) >= month_ago)
-        customer_growth_rate = (new_customers / (total_customers - new_customers) * 100) if total_customers > new_customers else 100.0
-
-        # Avg revenue per customer
-        avg_rev_per_cust = (total_revenue / total_customers) if total_customers else 0.0
-
-        return [
-            {"name": "total_revenue", "value": total_revenue},
-            {"name": "total_customers", "value": total_customers},
-            {"name": "customer_growth_rate", "value": round(customer_growth_rate, 2), "unit": "%"},
-            {"name": "avg_revenue_per_customer", "value": round(avg_rev_per_cust, 2)},
-        ]
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.get("/calls", response_model=List[Dict[str, Any]])
-async def get_call_kpis():
-    """
-    Returns call-related KPIs:
-    - total_calls
-    - avg_call_duration
-    - call_to_booking_conversion (%)
-    - human_intervention_rate (%)
-    """
-    try:
-        # Total calls and avg duration
-        call_res = supabase.table("call").select("conv_id,duration").execute()
-        total_calls = len(call_res.data)
-        avg_duration = (sum(c["duration"] or 0 for c in call_res.data) / total_calls) if total_calls else 0
-
-        # Call-to-booking conversion
-        conv_ids = [c["conv_id"] for c in call_res.data]
-        book_res = supabase.table("bookings").select("booking_id").in_("conv_id", conv_ids).eq("status", "confirmed").execute()
-        conversion_rate = (len(book_res.data) / total_calls * 100) if total_calls else 0
-
-        # Human intervention rate
-        analysis_res = supabase.table("call_analysis").select("human_agent_flag").execute()
-        human_flags = [a["human_agent_flag"] for a in analysis_res.data]
-        human_rate = (sum(1 for f in human_flags if f) / len(human_flags) * 100) if human_flags else 0
-
-        return [
-            {"name": "total_calls", "value": total_calls},
-            {"name": "avg_call_duration", "value": round(avg_duration, 2), "unit": "sec"},
-            {"name": "call_to_booking_conversion", "value": round(conversion_rate, 2), "unit": "%"},
-            {"name": "human_intervention_rate", "value": round(human_rate, 2), "unit": "%"},
-        ]
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+class TimePeriod(str, enum.Enum):
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+    quarterly = "quarterly"
+    half_yearly = "half_yearly"
+    yearly = "yearly"
 
 
 @router.get("/customers", response_model=List[Dict[str, Any]])
-async def get_customer_kpis():
+async def get_customer_kpis(
+    # 2. Add the time_period as a query parameter
+    # It will default to 'monthly' if not provided
+    time_period: TimePeriod = Query("monthly", description="Set the period for 'new_customers' count")
+):
     """
-    Returns customer engagement KPIs:
-    - retention_rate (%)
-    - avg_bookings_per_customer
-    - repeat_customer_rate (%)
+    Returns customer KPIs:
+    - Total Customers
+    - New Customers (for the selected period)
+    - Average Spend per Customer
+    - Customer Conversion Rate
     """
     try:
-        # Bookings per customer
-        b_res = supabase.table("bookings").select("customer_id").execute()
-        cust_bookings: Dict[str, int] = {}
-        for b in b_res.data:
-            cid = b["customer_id"]
-            cust_bookings[cid] = cust_bookings.get(cid, 0) + 1
-        total_customers = len(cust_bookings)
-        repeat_customers = sum(1 for cnt in cust_bookings.values() if cnt > 1)
-        avg_bookings = (sum(cust_bookings.values()) / total_customers) if total_customers else 0
-        repeat_rate = (repeat_customers / total_customers * 100) if total_customers else 0
+        # 3. Pass the parameter to your RPC call
+        params = {'time_period': time_period.value}
+        response = supabase.rpc('get_all_customer_kpis', params).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="No KPI data found.")
 
-        # Retention rate: customers with ≥2 bookings in last 90 days
-        ninety_days_ago = datetime.utcnow() - timedelta(days=90)
-        recent_res = supabase.table("bookings").select("customer_id,creation_time").gte("creation_time", ninety_days_ago.isoformat()).execute()
-        recent_counts: Dict[str, int] = {}
-        for b in recent_res.data:
-            cid = b["customer_id"]
-            recent_counts[cid] = recent_counts.get(cid, 0) + 1
-        retained = sum(1 for cnt in recent_counts.values() if cnt > 1)
-        retention_rate = (retained / total_customers * 100) if total_customers else 0
+        kpis = response.data[0]
 
         return [
-            {"name": "retention_rate", "value": round(retention_rate, 2), "unit": "%"},
-            {"name": "avg_bookings_per_customer", "value": round(avg_bookings, 2)},
-            {"name": "repeat_customer_rate", "value": round(repeat_rate, 2), "unit": "%"},
+            {"name": "total_customers", "value": kpis['total_customers']},
+            # This value is now dynamic based on the time_period
+            {"name": "new_customers", "value": kpis['new_customers']},
+            {"name": "avg_spend_per_customer", "value": round(kpis['avg_spend_per_customer'], 2), "unit": "currency"},
+            {"name": "customer_conversion_rate", "value": round(kpis['customer_conversion_rate'], 2), "unit": "%"}
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+    
+@router.get("/leads", response_model=List[Dict[str, Any]])
+async def get_lead_kpis():
+    """
+    Returns lead KPIs:
+    - Total Leads Generated
+    - Lead Conversion Rate
+    - Lead Response Time
+    - Lead Source Effectiveness
+    - Qualified Lead Ratio
+    """
+    try:
+        # This call remains exactly the same
+        response = supabase.rpc('get_all_lead_kpis').execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="No KPI data found.")
+            
+        kpis = response.data[0]
+
+        return [
+            {"name": "total_leads_generated", "value": kpis['total_leads_generated']},
+            {"name": "lead_conversion_rate", "value": round(kpis['lead_conversion_rate'], 2), "unit": "%"},
+            {"name": "avg_lead_response_time", "value": round(kpis['avg_lead_response_time'], 2), "unit": "hours"},
+            {"name": "best_lead_source", "value": kpis['best_lead_source']},
+            {"name": "qualified_lead_ratio", "value": round(kpis['qualified_lead_ratio'], 2), "unit": "%"},
         ]
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-
-@router.get("/leads", response_model=List[Dict[str, Any]])
-async def get_lead_kpis():
+@router.get("/bookings", response_model=List[Dict[str, Any]])
+async def get_booking_kpis():
     """
-    Returns lead & booking funnel KPIs:
-    - total_leads
-    - lead_to_customer_conversion (%)
-    - booking_confirmation_rate (%)
+    Returns booking KPIs:
+    - Total Bookings
+    - Booking Conversion Rate
+    - Average Booking Value (ABV)
+    - Cancellation Rate
+    - Repeat Booking Rate
     """
     try:
-        # Total leads
-        lead_res = supabase.table("leads").select("lead_id,email").execute()
-        total_leads = len(lead_res.data)
-
-        # Lead-to-customer conversion
-        emails = [l["email"] for l in lead_res.data]
-        cust_res = supabase.table("customers").select("customer_id,email").in_("email", emails).execute()
-        conversion = (len(cust_res.data) / total_leads * 100) if total_leads else 0
-
-        # Booking confirmation rate
-        book_res = supabase.table("bookings").select("status").execute()
-        confirmed = sum(1 for b in book_res.data if b["status"] == "confirmed")
-        confirmation_rate = (confirmed / len(book_res.data) * 100) if book_res.data else 0
+        # Call your new function one time
+        response = supabase.rpc('get_all_booking_kpis').execute()
+        
+        # The result is the first item in the data list
+        kpis = response.data[0]
 
         return [
-            {"name": "total_leads", "value": total_leads},
-            {"name": "lead_to_customer_conversion", "value": round(conversion, 2), "unit": "%"},
-            {"name": "booking_confirmation_rate", "value": round(confirmation_rate, 2), "unit": "%"},
+            {"name": "total_bookings", "value": kpis['total_bookings']},
+            {"name": "booking_conversion_rate", "value": round(kpis['booking_conversion_rate'], 2), "unit": "%"},
+            {"name": "avg_booking_value", "value": round(kpis['avg_booking_value'], 2), "unit": "currency"},
+            {"name": "cancellation_rate", "value": round(kpis['cancellation_rate'], 2), "unit": "%"},
+            {"name": "repeat_booking_rate", "value": round(kpis['repeat_booking_rate'], 2), "unit": "%"},
+        ]
+        
+    except Exception as e:
+        # Handle cases where the rpc might fail or return no data
+        if not response.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No KPI data found.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+
+@router.get("/payments", response_model=List[Dict[str, Any]])
+async def get_payment_kpis(
+    # Add the time_period query parameter
+    time_period: TimePeriod = Query("monthly", description="Set the period for 'Revenue Growth Rate'")
+):
+    """
+    Returns payment analytics KPIs:
+    - Total Revenue Collected
+    - Outstanding/Pending Payments
+    - Average Payment Value
+    - Revenue Growth Rate (dynamic based on time_period)
+    - Refund/Chargeback Rate
+    """
+    try:
+        # Pass the parameter to your RPC call
+        params = {'time_period': time_period.value}
+        response = supabase.rpc('get_all_payment_kpis', params).execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="No KPI data found.")
+
+        kpis = response.data[0]
+
+        return [
+            {"name": "total_revenue_collected", "value": round(kpis['total_revenue_collected'], 2), "unit": "currency"},
+            {"name": "outstanding_payments", "value": round(kpis['outstanding_payments'], 2), "unit": "currency"},
+            {"name": "avg_payment_value", "value": round(kpis['avg_payment_value'], 2), "unit": "currency"},
+            {"name": "revenue_growth_rate", "value": round(kpis['revenue_growth_rate'], 2), "unit": "%"},
+            {"name": "refund_chargeback_rate", "value": round(kpis['refund_chargeback_rate'], 2), "unit": "%"},
         ]
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

@@ -1,53 +1,78 @@
+# backend/services/payment_service.py
+
 from typing import List, Optional
 from postgrest import APIError
-
 from backend.config.supabase_client import supabase
-from backend.models.payment_model import Payment, PaymentCreate, PaymentUpdate, PaymentStatus
+from backend.models.payment_model import PaymentCreate, PaymentUpdate, Payment
 
-def create_payment(payment_data: PaymentCreate) -> Payment:
-    """Creates a new payment record with a 'pending' status."""
-    try:
-        payment_dict = payment_data.model_dump(mode="json")
-        # Set the initial status automatically
-        payment_dict["payment_status"] = PaymentStatus.PENDING.value
-        response = supabase.table("payment").insert(payment_dict).execute()
-        return Payment(**response.data[0])
-    except APIError as e:
-        raise e
+payment_table = "payment"
+def create_payment(data: PaymentCreate) -> Payment:
+    payload = data.model_dump(mode="json")
+    resp = supabase.table(payment_table).insert(payload).execute()
+    if getattr(resp, "status_code", 200) >= 300:
+        raise APIError(resp.get("error", {}))
+    row = (resp.data or [])[0]
+    return Payment(**row)
 
 def get_all_payments(skip: int = 0, limit: int = 100) -> List[Payment]:
-    """Retrieves a list of all payments."""
-    try:
-        response = supabase.table("payment").select("*").range(skip, skip + limit - 1).execute()
-        return [Payment(**item) for item in response.data] if response.data else []
-    except APIError as e:
-        raise e
+    resp = (
+        supabase
+        .table(payment_table)
+        .select("*")
+        .order("creation_time", desc=True)
+        .range(skip, skip + limit - 1)
+        .execute()
+    )
+    if getattr(resp, "status_code", 200) >= 300:
+        raise APIError(resp.get("error", {}))
+    return [Payment(**row) for row in resp.data or []]
 
-def get_payment_by_id(payment_id: int) -> Optional[Payment]:
-    """Retrieves a single payment by its ID."""
-    try:
-        response = supabase.table("payment").select("*").eq("payment_id", payment_id).single().execute()
-        return Payment(**response.data) if response.data else None
-    except APIError as e:
-        print(f"Error fetching payment by ID {payment_id}: {e.message}")
-        return None
+def get_payment_by_id(payment_id: str) -> Optional[Payment]:
+    resp = (
+        supabase
+        .table(payment_table)
+        .select("*")
+        .eq("payment_id", payment_id)
+        .single()
+        .execute()
+    )
+    if getattr(resp, "status_code", 200) >= 300:
+        if resp.status_code == 406:
+            return None
+        raise APIError(resp.get("error", {}))
+    return Payment(**(resp.data or {}))
 
-def update_payment(payment_id: int, payment_data: PaymentUpdate) -> Optional[Payment]:
-    """Updates an existing payment's record."""
-    try:
-        update_dict = payment_data.model_dump(exclude_unset=True,mode="json")
-        if not update_dict:
-            return get_payment_by_id(payment_id)
+def update_payment(payment_id: str, data: PaymentUpdate) -> Optional[Payment]:
+    update_fields = data.model_dump(exclude_unset=True, mode="json")
+    if not update_fields:
+        return get_payment_by_id(payment_id)
+    resp = (
+        supabase
+        .table(payment_table)
+        .update(update_fields)
+        .eq("payment_id", payment_id)
+        .single()
+        .execute()
+    )
+    if getattr(resp, "status_code", 200) >= 300:
+        if resp.status_code == 406:
+            return None
+        raise APIError(resp.get("error", {}))
+    return Payment(**(resp.data or {}))
 
-        response = supabase.table("payment").update(update_dict).eq("payment_id", payment_id).execute()
-        return Payment(**response.data[0]) if response.data else None
-    except APIError as e:
-        raise e
+def delete_payment(payment_id: str) -> Optional[Payment]:
+    resp = (
+        supabase
+        .table(payment_table)
+        .delete()
+        .eq("payment_id", payment_id)
+        .single()
+        .execute()
+    )
+    if getattr(resp, "status_code", 200) >= 300:
+        if resp.status_code == 406:
+            return None
+        raise APIError(resp.get("error", {}))
+    return Payment(**(resp.data or {}))
 
-def delete_payment(payment_id: int) -> Optional[Payment]:
-    """Deletes a payment from the database."""
-    try:
-        response = supabase.table("payment").delete().eq("payment_id", payment_id).execute()
-        return Payment(**response.data[0]) if response.data else None
-    except APIError as e:
-        raise e
+
