@@ -8,3 +8,4 @@ class ValidationRequest(BaseModel):
 class ValidationResponse(BaseModel):
     exists: bool
     reason: str
+    is_admin: bool
