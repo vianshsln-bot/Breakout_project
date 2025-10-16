@@ -45,7 +45,7 @@ def get_bookings_trend():
         if not start_time or not status:
             continue  # Skip if data is incomplete
 
-        if status == "booked":
+        if status == "confirmed":
             # Extract date (YYYY-MM-DD) from ISO timestamp format "2019-08-24T14:15:22Z"
             date_str = start_time.split("T")[0]
             daily_counts[date_str] += 1
