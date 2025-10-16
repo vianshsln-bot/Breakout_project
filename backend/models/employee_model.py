@@ -1,29 +1,38 @@
-from pydantic import BaseModel, Field, EmailStr
+# models/employee_models.py
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-class EmployeeBase(BaseModel):
-    """Base schema for an employee."""
-    name: str = Field(..., min_length=2, max_length=100, example="Jane Doe")
-    email: EmailStr = Field(..., example="jane.doe@example.com")
-    phone_number: str = Field(..., max_length=20, example="+919123456789")
-    role: str = Field(..., max_length=50, example="Sales Agent")
-    branch_id: Optional[int] = Field(None, description="The ID of the branch the employee belongs to.", example=1)
-
-class EmployeeCreate(EmployeeBase):
-    """Schema for creating a new employee."""
-    pass
+class EmployeeCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
+    branch_id: Optional[int] = None
+    role: str = "unassigned"
 
 class EmployeeUpdate(BaseModel):
-    """Schema for updating an existing employee. All fields are optional."""
-    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    # Identity fields (handled via Auth if present)
     email: Optional[EmailStr] = None
-    phone_number: Optional[str] = Field(None, max_length=20)
-    role: Optional[str] = Field(None, max_length=50)
+    password: Optional[str] = None
+    # Business fields (handled via employee table)
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
     branch_id: Optional[int] = None
+    role: Optional[str] = None
 
-class Employee(EmployeeBase):
-    """Schema for representing an employee record from the database."""
-    employee_id: int = Field(..., example=101)
+class EmployeeOut(BaseModel):
+    id: str
+    email: EmailStr
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
+    branch_id: Optional[int] = None
+    role: str
 
-    class Config:
-        from_attributes = True
+class ValidationRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class ValidationResponse(BaseModel):
+    exists: bool
+    reason: str
+    is_admin: bool

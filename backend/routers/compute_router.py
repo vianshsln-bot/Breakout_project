@@ -83,7 +83,7 @@ def compute_kpis():
         # ------------------------------
         # 6️⃣ Customer Conversion Rate
         # ------------------------------
-        booked = [b for b in bookings if (b.get("booking_status") or "").lower() == "booked"]
+        booked = [b for b in bookings if (b.get("status") or "").lower() == "booked"]
         customer_conversion_rate = safe_divide(len(booked), total_bookings)
 
         # ------------------------------
