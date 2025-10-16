@@ -24,11 +24,7 @@ def get_calls_trend():
     return {"dates": list(daily_counts.keys()), "calls": list(daily_counts.values())}
 
 # --- 2. Bookings Trend ---
-from collections import defaultdict
-<<<<<<< HEAD
-from config.supabase_client import supabase
-=======
->>>>>>> e450dfc3c4a898343b63aa19b105200e34d3b4e6
+
 
 def get_bookings_trend():
     # Fetch start_time and status columns from the bookings table
