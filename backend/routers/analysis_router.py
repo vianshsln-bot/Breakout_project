@@ -52,7 +52,6 @@ async def get_customer_kpis(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
-    
 @router.get("/leads", response_model=List[Dict[str, Any]])
 async def get_lead_kpis():
     """
