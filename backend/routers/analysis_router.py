@@ -147,3 +147,135 @@ async def get_payment_kpis(
         ]
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/llmkpi")
+def get_analysis_llmkpis():
+    """
+    Returns AI-related call analysis KPIs.
+    """
+    try:
+        # Fetch data from Supabase call_analysis table
+        response = supabase.table("call_analysis").select("*").execute()
+        records = response.data or []
+
+        if not records:
+            return {"llmkpi": []}
+
+        total_calls = len(records)
+        ai_calls = sum(1 for r in records if r.get("ai_detect_flag"))
+        human_calls = sum(1 for r in records if r.get("human_agent_flag"))
+        out_of_scope_calls = sum(1 for r in records if r.get("out_of_scope"))
+        ai_success_calls = sum(
+            1 for r in records if r.get("ai_detect_flag") and not r.get("failed_conversion_reason")
+        )
+
+        # Compute metrics
+        llmkpi = [
+            {
+                "name": "AI Detection Rate",
+                "value": round((ai_calls / total_calls) * 100, 2) if total_calls else 0,
+                "description": "% of calls detected or handled by AI",
+                "output_format": "percentage (0–100%)"
+            },
+            {
+                "name": "Human Agent Involvement Rate",
+                "value": round((human_calls / total_calls) * 100, 2) if total_calls else 0,
+                "description": "% of calls where human agent was required",
+                "output_format": "percentage (0–100%)"
+            },
+            {
+                "name": "Out-of-Scope Rate",
+                "value": round((out_of_scope_calls / total_calls) * 100, 2) if total_calls else 0,
+                "description": "Share of calls where query was irrelevant or unanswerable",
+                "output_format": "percentage (0–100%)"
+            },
+            {
+                "name": "AI Success Rate",
+                "value": round((ai_success_calls / ai_calls) * 100, 2) if ai_calls else 0,
+                "description": "Effectiveness of AI in resolving calls",
+                "output_format": "percentage (0–100%)"
+            }
+        ]
+
+        return {"llmkpi": llmkpi}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching KPIs: {e}")
+
+
+@router.get("/charts")
+def get_analysis_charts():
+    """
+    Returns key chart datasets for visual analytics.
+    """
+    try:
+        # Fetch joined call + call_analysis data
+        query = supabase.rpc("get_call_analysis_joined").execute() if hasattr(supabase, "rpc") else supabase.table("call_analysis").select("*").execute()
+        analysis_records = query.data or []
+
+        if not analysis_records:
+            return {"charts": []}
+
+        # Chart 1: Analysis Volume Over Time
+        volume_by_date = defaultdict(int)
+        for r in analysis_records:
+            # You'll need to also fetch `date_time` from call table
+            if "date_time" in r:
+                date_str = r["date_time"].split("T")[0]
+                volume_by_date[date_str] += 1
+
+        chart1 = {
+            "title": "Analysis Volume Over Time",
+            "description": "Calls analyzed per day",
+            "x_axis": list(volume_by_date.keys()),
+            "y_axis": list(volume_by_date.values()),
+            "chart_type": "line"
+        }
+
+        # Chart 2: Average Sentiment by Failed Conversion Reason
+        sentiment_by_reason = defaultdict(list)
+        for r in analysis_records:
+            reason = r.get("failed_conversion_reason")
+            if reason:
+                sentiment_by_reason[reason].append(float(r.get("sentiment_score", 0)))
+
+        avg_sentiment = {
+            reason: sum(vals) / len(vals)
+            for reason, vals in sentiment_by_reason.items()
+        }
+
+        chart2 = {
+            "title": "Average Sentiment by Failed Conversion Reason",
+            "x_axis": list(avg_sentiment.keys()),
+            "y_axis": [round(v, 3) for v in avg_sentiment.values()],
+            "chart_type": "bar"
+        }
+
+        # Chart 3: AI Detection Trend Over Time (weekly)
+        ai_by_week = defaultdict(lambda: {"ai": 0, "total": 0})
+        for r in analysis_records:
+            if "date_time" in r:
+                date_obj = datetime.fromisoformat(r["date_time"].split("T")[0])
+                week_start = date_obj.strftime("%Y-%W")  # Year-Week format
+                ai_by_week[week_start]["total"] += 1
+                if r.get("ai_detect_flag"):
+                    ai_by_week[week_start]["ai"] += 1
+
+        ai_trend = {
+            week: (vals["ai"] / vals["total"]) * 100
+            for week, vals in ai_by_week.items()
+            if vals["total"] > 0
+        }
+
+        chart3 = {
+            "title": "AI Detection Trend Over Time",
+            "x_axis": list(ai_trend.keys()),
+            "y_axis": [round(v, 2) for v in ai_trend.values()],
+            "chart_type": "line"
+        }
+
+        return {"charts": [chart1, chart2, chart3]}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching chart data: {e}")
