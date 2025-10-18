@@ -24,11 +24,7 @@ def get_calls_trend():
     return {"dates": list(daily_counts.keys()), "calls": list(daily_counts.values())}
 
 # --- 2. Bookings Trend ---
-from collections import defaultdict
-<<<<<<< HEAD
-from config.supabase_client import supabase
-=======
->>>>>>> e450dfc3c4a898343b63aa19b105200e34d3b4e6
+
 
 def get_bookings_trend():
     # Fetch start_time and status columns from the bookings table
@@ -45,7 +41,7 @@ def get_bookings_trend():
         if not start_time or not status:
             continue  # Skip if data is incomplete
 
-        if status == "booked":
+        if status == "confirmed":
             # Extract date (YYYY-MM-DD) from ISO timestamp format "2019-08-24T14:15:22Z"
             date_str = start_time.split("T")[0]
             daily_counts[date_str] += 1
