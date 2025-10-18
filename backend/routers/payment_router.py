@@ -1,5 +1,3 @@
-# backend/routers/payment_router.py
-
 from fastapi import APIRouter, HTTPException, status, Query
 from typing import List
 from postgrest import APIError
