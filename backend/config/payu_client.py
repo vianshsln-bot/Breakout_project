@@ -412,13 +412,6 @@ class PayUManager:
                 "email": request.customer.email,
                 "phone": request.customer.phone,
             },
-            "address": {
-                "line1": request.address.line1,
-                "line2": request.address.line2,
-                "city": request.address.city,
-                "state": request.address.state,
-                "zipCode": request.address.zipCode,
-            },
             "udf": {
                 "booking_id": request.udf.booking_id,
                 "customer_id": request.udf.customer_id,
