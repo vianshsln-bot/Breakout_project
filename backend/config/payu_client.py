@@ -11,7 +11,7 @@ import threading
 import hashlib
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any,List
 from pydantic import BaseModel, Field, EmailStr, validator
 from dotenv import load_dotenv
 
@@ -36,19 +36,19 @@ class CustomerInfo(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
 
 
-class AddressInfo(BaseModel):
-    """Address information for payment link."""
-    line1: str = Field(default="", max_length=200)
-    line2: str = Field(default="", max_length=200)
-    city: str = Field(default="", max_length=100)
-    state: str = Field(default="", max_length=100)
-    zipCode: str = Field(default="", max_length=10)
+# class AddressInfo(BaseModel):
+#     """Address information for payment link."""
+#     line1: str = Field(default="", max_length=200)
+#     line2: str = Field(default="", max_length=200)
+#     city: str = Field(default="", max_length=100)
+#     state: str = Field(default="", max_length=100)
+#     zipCode: str = Field(default="", max_length=10)
 
 
 class UDFInfo(BaseModel):
     """User-defined fields for payment link."""
-    udf1: Optional[str] = None
-    udf2: Optional[str] = None
+    booking_id: Optional[str] = None
+    customer_id: Optional[str] = None
     udf3: Optional[str] = None
     udf4: Optional[str] = None
     udf5: Optional[str] = None
@@ -56,19 +56,19 @@ class UDFInfo(BaseModel):
 
 class PaymentLinkRequest(BaseModel):
     """Request model for creating a payment link."""
-    invoiceNumber: str = Field(..., min_length=1)
-    subAmount: float = Field(..., ge=0)
-    tax: float = Field(default=0, ge=0)
-    shippingCharge: float = Field(default=0, ge=0)
-    discount: float = Field(default=0, ge=0)
-    adjustment: float = Field(default=0, ge=0)
+    invoiceNumber: Optional[str] = None
+    subAmount: float = Field(default=5, ge=5)
+    tax: float = Field(default=1, ge=1)
+    shippingCharge: float = Field(default=1, ge=1)
+    discount: float = Field(default=1, ge=1)
+    adjustment: float = Field(default=1, ge=1)
     minAmountForCustomer: float = Field(default=0, ge=0)
-    description: str = Field(default="")
+    isPartialPaymentAllowed: bool = Field(default=False)
+    description: str = Field(default="check123")
     source: str = Field(default="API")
     currency: str = Field(default="INR")
     maxPaymentsAllowed: int = Field(default=1, ge=1)
     customer: CustomerInfo
-    address: AddressInfo = Field(default_factory=AddressInfo)
     udf: UDFInfo = Field(default_factory=UDFInfo)
     viaEmail: bool = Field(default=True)
     viaSms: bool = Field(default=False)
@@ -110,10 +110,36 @@ class AddressResponse(BaseModel):
     country: Optional[str] = None
     zipCode: Optional[str] = None
 
+class TransactionDetail(BaseModel):
+    createdOn: str
+    transactionId: str
+    merchantReferenceId: Optional[str]
+    paymentId: Optional[str]
+    settledAmount: float
+    customerEmail: Optional[str]
+    status: str
+    mode: Optional[str]
+    bankCode: Optional[str]
+    cardNum: Optional[str]
+    subscriptionDetails: Optional[Any]
+
+class TransactionPage(BaseModel):
+    pageSize: int
+    pages: int
+    rows: int
+    pageOffset: int
+    data: List[TransactionDetail]
+
+class TransactionResponse(BaseModel):
+    status: int
+    message: Optional[str]
+    result: TransactionPage
+    errorCode: Optional[str]
+    guid: Optional[str]
 
 class PaymentLinkResult(BaseModel):
     """Detailed payment link result from PayU."""
-    subAmount: float
+    subAmount: Optional[float] = None
     tax: float
     shippingCharge: float
     totalAmount: float
@@ -413,8 +439,8 @@ class PayUManager:
                 "phone": request.customer.phone,
             },
             "udf": {
-                "booking_id": request.udf.booking_id,
-                "customer_id": request.udf.customer_id,
+                "udf1": request.udf.booking_id,
+                "udf2": request.udf.customer_id,
                 "udf3": request.udf.udf3,
                 "udf4": request.udf.udf4,
                 "udf5": request.udf.udf5,
@@ -432,7 +458,7 @@ class PayUManager:
     def create_payment_link(
         self, 
         request: PaymentLinkRequest
-    ) -> PaymentLinkCreationResponse:
+    ):
         """
         Create a payment link via PayU API.
         
@@ -451,7 +477,7 @@ class PayUManager:
             # Build payload
             payload = self._build_payment_payload(request)
             payload_json = json.dumps(payload)
-            
+            print("Creating payment link for customer:", request.customer.email)
             # Prepare headers
             headers = {
                 'merchantId': self.merchant_id,
@@ -463,13 +489,17 @@ class PayUManager:
             conn.request("POST", "/payment-links/", payload_json, headers)
             response = conn.getresponse()
             data = json.loads(response.read().decode("utf-8"))
-            print("DONEE=========")
-            # print("data",data)
+            
             conn.close()
-
+            # print("Response Data:", data)
             # Parse response
+            # print(data.get("status"))
+            if data.get("status") != 0:
+                raise PayUAPIError(
+                    f"Payment link creation failed: {data.get('message')} "
+                    f"(Error Code: {data.get('errorCode')})"
+                )
             payu_response = PaymentLinkResponse(**data)
-            print(payu_response)
             # print(f"✓ Payment link created successfully: {data}")  
             # Check for success
             if payu_response.status != 0:
@@ -477,15 +507,64 @@ class PayUManager:
                     f"Payment link creation failed: {payu_response.message} "
                     f"(Error Code: {payu_response.errorCode})"
                 )
-
-            # Convert to simplified response
+            
             return payu_response
         except PayUAPIError:
             raise
         except Exception as e:
             raise PayUAPIError(f"Unexpected error creating payment link: {e}")
 
- 
+    # ------------------------------------------------------------------------
+    # CHECK TRANSACTION STATUS BY INVOICE ID
+    # ------------------------------------------------------------------------
+    
+    def get_transaction_details(
+        self,
+        invoice_id: str,
+        date_from: datetime,
+        date_to: datetime,
+        page_size: int = 10,
+        page_offset: int = 0
+    ) -> TransactionPage:
+        """
+        Fetch transaction details for a given invoice ID between date_from and date_to.
+        Raises PayUAPIError on failure.
+        """
+        date_from_str = date_from.strftime("%Y-%m-%d")
+        date_to_str = date_to.strftime("%Y-%m-%d")
+
+        headers = {
+            "merchantId": self.merchant_id,
+            "Authorization": f"Bearer {self.get_token()}"
+        }
+        print(self.get_token())
+        path = (
+            f"/payment-links/{invoice_id}/txns"
+            f"?pageSize={page_size}"
+            f"&pageOffset={page_offset}"
+            f"&dateFrom={date_from_str}"
+            f"&dateTo={date_to_str}"
+        )
+
+        conn = http.client.HTTPSConnection(self.API_BASE_URL)
+        conn.request("GET", path, headers=headers)
+        response = conn.getresponse()
+        raw = response.read().decode("utf-8")
+        conn.close()
+
+        if response.status != 200:
+            raise RuntimeError(f"HTTP {response.status}: {raw}")
+
+        payload = json.loads(raw)
+        txn_resp = TransactionResponse(**payload)
+        if txn_resp.status != 0:
+            raise RuntimeError(
+                f"PayU Error {txn_resp.errorCode}: {txn_resp.message}"
+            )
+
+        return txn_resp.result
+
+
 # ============================================================================
 # SINGLETON INSTANCE
 # ============================================================================
@@ -518,7 +597,6 @@ if __name__ == "__main__":
         manager = get_payu_client()
         print("✓ PayU Manager initialized successfully\n")
         
-        # Example 2: Detailed payment link with all parameters
         print("--- Creating Detailed Payment Link ---")
         detailed_request = PaymentLinkRequest(
             invoiceNumber=f"INV{uuid.uuid4().hex[:8].upper()}",
@@ -533,13 +611,6 @@ if __name__ == "__main__":
                 name="Jane Smith",
                 email="jane.smith@example.com",
                 phone="9123456789"
-            ),
-            address=AddressInfo(
-                line1="123 Main Street",
-                line2="Apartment 4B",
-                city="Mumbai",
-                state="Maharashtra",
-                zipCode="400001"
             ),
             udf=UDFInfo(
                 booking_id="BOOK789",
@@ -556,6 +627,16 @@ if __name__ == "__main__":
         print(f"  Total: ₹{detailed_response.total_amount}")
         print(f"  Due: ₹{detailed_response.due_amount}")
         print(f"  Email Status: {detailed_response.email_status}\n")
+
+        # check transaction details
+        print("--- Checking Transaction Details ---")
+        invoice_id = "INV6246471055"
+        date_from = datetime.now() - timedelta(days=2)
+        date_to = datetime.now()
+        print(date_from,date_to)
+        txn_page = manager.get_transaction_details(invoice_id, date_from, date_to)
+        print(txn_page.data)
+        print(f"✓ Found {txn_page.rows} transactions for Invoice ID {invoice_id}")
         
     except PayUAPIError as e:
         print(f"✗ PayU Error: {e}")
