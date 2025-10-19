@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any
 import requests
 import time
 from datetime import datetime, timedelta,timezone
+from backend.config.payu_client import PaymentLinkRequest
 from backend.config.supabase_client import supabase
 
 # Assume your BookeoAPI class and helper functions are importable
@@ -45,7 +46,9 @@ class BookingHoldCreate(BaseModel):
     customer_id: str
     adults: int = 1
     children: int = 0
+    previous_hold_id: Optional[str] = None
     lang: str = "en-US"
+    payment_info: PaymentLinkRequest = None
 
 class PaymentItem(BaseModel):
     amount: str = "100"
@@ -177,16 +180,19 @@ def create_customer( payload:CustomerCreate ,bookeo: BookeoAPI = Depends(get_boo
         status = getattr(getattr(e, "response", None), "status_code", 502)
         raise HTTPException(status_code=status, detail="Failed to create customer")
 
+
+
 @router.post("/holds")
 def create_hold(payload: BookingHoldCreate, bookeo: BookeoAPI = Depends(get_bookeo_client)):
     try:
         participants = create_participants_data(adults=payload.adults, children=payload.children)
-        return bookeo.create_booking_hold(
+        return bookeo.create_booking_hold_and_payment_link(
             event_id=payload.event_id,
             customer_id=payload.customer_id,
             participants=participants,
             product_id=payload.product_id,
             lang=payload.lang,
+            payment_link_request=payload.payment_info,
         )
     except requests.RequestException as e:
         status = getattr(getattr(e, "response", None), "status_code", 502)
