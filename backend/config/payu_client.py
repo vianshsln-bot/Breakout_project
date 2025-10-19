@@ -239,8 +239,6 @@ class PayUManager:
     """
     
     # UAT Environment URLs
-    AUTH_URL = "https://uat-accounts.payu.in/oauth/token"
-    API_BASE_URL = "uatoneapi.payu.in"
     
     def __init__(self, scope: str = "create_payment_links read_payment_links update_payment_links"):
         """
@@ -274,19 +272,19 @@ class PayUManager:
         Raises:
             PayUAPIError: If file not found or credentials missing
         """
-        try:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            file_path = os.path.join(script_dir, filename)
+        # try:
+        #     script_dir = os.path.dirname(os.path.abspath(__file__))
+        #     file_path = os.path.join(script_dir, filename)
 
-            if not os.path.exists(file_path):
-                raise FileNotFoundError(f"Environment file '{filename}' not found at {file_path}")
+        #     if not os.path.exists(file_path):
+        #         raise FileNotFoundError(f"Environment file '{filename}' not found at {file_path}")
 
-            load_dotenv(dotenv_path=file_path)
+        #     load_dotenv(dotenv_path=file_path)
 
-        except FileNotFoundError as e:
-            raise PayUAPIError(str(e))
-        except Exception as e:
-            raise PayUAPIError(f"Error reading environment file '{filename}': {e}")
+        # except FileNotFoundError as e:
+        #     raise PayUAPIError(str(e))
+        # except Exception as e:
+        #     raise PayUAPIError(f"Error reading environment file '{filename}': {e}")
 
         # Load credentials from environment
         self.client_id = os.getenv("PAYU_CLIENT_ID")
