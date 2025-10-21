@@ -18,19 +18,19 @@ export default function CallsPage() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    fetchMoreCalls(true);
-  }, []);
-
   const fetchMoreCalls = async (initialLoad = false) => {
     if (loading && !initialLoad) return;
     setLoading(true);
-    setError(null);
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/calls/?skip=${initialLoad ? 0 : offset}&limit=${CALLS_PER_PAGE}`);
+      const currentOffset = initialLoad ? 0 : offset;
+      const response = await fetch(`${API_BASE_URL}/calls/?skip=${currentOffset}&limit=${CALLS_PER_PAGE}`);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
       }
+      
       const data: Call[] = await response.json();
       
       if (data.length < CALLS_PER_PAGE) {
@@ -43,18 +43,23 @@ export default function CallsPage() {
         setSelectedCall(data[0]);
       }
       
-      setOffset(prevOffset => initialLoad ? CALLS_PER_PAGE : prevOffset + CALLS_PER_PAGE);
+      setOffset(currentOffset + CALLS_PER_PAGE);
+      setError(null); // Clear error on successful fetch
 
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('An unexpected error occurred');
+        setError('An unexpected error occurred while fetching calls.');
       }
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchMoreCalls(true);
+  }, []);
 
   const filteredCalls = calls.filter(c =>
     c.conv_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,3 +139,5 @@ export default function CallsPage() {
     </div>
   );
 }
+
+    

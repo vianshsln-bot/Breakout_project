@@ -82,14 +82,15 @@ export interface ActiveCall {
 }
 
 export interface Booking {
-  booking_id: number;
-  booking_date: string;
-  slot_id: number;
-  customer_id: number;
-  booking_status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  payment_id: number;
-  conv_id: string;
-  guest_count: number;
+  booking_id: string;
+  event_id: string;
+  theme_id: string;
+  start_time: string;
+  end_time: string;
+  customer_id: string;
+  status: 'active' | 'confirmed' | 'cancelled' | 'completed';
+  creation_time: string;
+  conv_id: string | null;
 }
 
 

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { KPIMetric, KpiApiResponse } from '@/lib/types';
@@ -9,11 +10,18 @@ import { KpiSection } from './_components/kpi-section';
 import { AiPerformance } from './_components/ai-performance';
 import { QualityAssurance } from './_components/quality-assurance';
 import { Alerts } from './_components/alerts';
+import { AdditionalAnalytics } from './_components/additional-analytics';
+import { useAuth } from '@/context/AuthContext';
 
 const formatDurationFromSeconds = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')} min`;
+  if (seconds < 3600) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.round(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')} min`;
+  }
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  return `${hours}h ${mins}m`;
 };
 
 export default function AnalysisPage() {
@@ -21,18 +29,69 @@ export default function AnalysisPage() {
   const [executiveMetrics, setExecutiveMetrics] = useState<KPIMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const fetchKpis = async () => {
       setLoading(true);
-      setError(null);
+      // Don't clear previous error, so UI can show stale data while retrying
+      // setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/compute/kpis`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data: KpiApiResponse = await response.json();
-        const kpis = data.kpis;
+        const [kpiResponse, customerKpiResponse, leadsKpiResponse, bookingsKpiResponse] = await Promise.all([
+            fetch(`${API_BASE_URL}/compute/kpis`),
+            fetch(`${API_BASE_URL}/kpis/customers`),
+            fetch(`${API_BASE_URL}/kpis/leads`),
+            fetch(`${API_BASE_URL}/kpis/bookings`)
+        ]);
+
+        if (!kpiResponse.ok) throw new Error(`HTTP error on main KPIs! Status: ${kpiResponse.status} ${await kpiResponse.text()}`);
+        if (!customerKpiResponse.ok) throw new Error(`HTTP error on customer KPIs! Status: ${customerKpiResponse.status} ${await customerKpiResponse.text()}`);
+        if (!leadsKpiResponse.ok) throw new Error(`HTTP error on leads KPIs! Status: ${leadsKpiResponse.status} ${await leadsKpiResponse.text()}`);
+        if (!bookingsKpiResponse.ok) throw new Error(`HTTP error on bookings KPIs! Status: ${bookingsKpiResponse.status} ${await bookingsKpiResponse.text()}`);
+        
+        const data: KpiApiResponse = await kpiResponse.json();
+        const customerKpiData: {name: string, value: any, unit?: string}[] = await customerKpiResponse.json();
+        const leadsKpiData: {name: string, value: any, unit?: string}[] = await leadsKpiResponse.json();
+        const bookingsKpiData: {name: string, value: any, unit?: string}[] = await bookingsKpiResponse.json();
+        
+        const customerKpisObject = customerKpiData.reduce((acc, item) => {
+            const key = item.name === 'customer_conversion_rate' ? 'customer_conversion_rate_pct' : item.name;
+            acc[key] = item.value;
+            return acc;
+        }, {} as Record<string, any>);
+        
+        const leadsKpiObject = leadsKpiData.reduce((acc, item) => {
+            const keyMap: Record<string, string> = {
+                'lead_conversion_rate': 'lead_conversion_rate_pct',
+                'avg_lead_response_time': 'lead_response_time_sec',
+                'best_lead_source': 'lead_source_effectiveness',
+                'qualified_lead_ratio': 'qualified_lead_ratio_pct'
+            };
+            const key = keyMap[item.name] || item.name;
+            let value = item.value;
+            if (item.name === 'avg_lead_response_time' && item.unit === 'hours') {
+                value = value * 3600; // convert hours to seconds
+            }
+            acc[key] = value;
+            return acc;
+        }, {} as Record<string, any>);
+
+        const bookingsKpiObject = bookingsKpiData.reduce((acc, item) => {
+             const keyMap: Record<string, string> = {
+                'booking_conversion_rate': 'booking_conversion_rate_pct',
+                'cancellation_rate': 'cancellation_rate_pct',
+                'repeat_booking_rate': 'repeat_booking_rate_pct',
+            };
+            const key = keyMap[item.name] || item.name;
+            acc[key] = item.value;
+            return acc;
+        }, {} as Record<string, any>);
+
+        // Merge all KPI sources
+        const kpis = { ...data.kpis, ...customerKpisObject, ...leadsKpiObject, ...bookingsKpiObject };
+        setError(null); // Clear error on success
 
         const executiveKpiConfig: { id: keyof KpiApiResponse['kpis']; label: string; target: string; higherIsBetter: boolean, unit: 'percentage' | 'seconds' | 'number' | 'rating' }[] = [
             { id: 'first_call_resolution_pct', label: 'First Call Resolution', target: '>90%', higherIsBetter: true, unit: 'percentage' },
@@ -50,9 +109,6 @@ export default function AnalysisPage() {
             { id: 'total_customers', label: 'Total Customers', target: '>1000', higherIsBetter: true, unit: 'number' },
             { id: 'new_customers', label: 'New Customers', target: '>50', higherIsBetter: true, unit: 'number' },
             { id: 'avg_spend_per_customer', label: 'Average Spend per Customer', target: '>$500', higherIsBetter: true, unit: 'currency' },
-            { id: 'top_customer_locations', label: 'Top Customer Locations', target: 'N/A', higherIsBetter: true, unit: 'string' },
-            { id: 'customer_conversion_rate_pct', label: 'Customer Conversion Rate', target: '>10%', higherIsBetter: true, unit: 'percentage' },
-            { id: 'customer_satisfaction_avg_rating', label: 'Customer Satisfaction', target: '>4.5', higherIsBetter: true, unit: 'rating' },
             
             // Leads
             { id: 'total_leads_generated', label: 'Total Leads Generated', target: '>200', higherIsBetter: true, unit: 'number' },
@@ -67,13 +123,6 @@ export default function AnalysisPage() {
             { id: 'avg_booking_value', label: 'Average Booking Value (ABV)', target: '>$800', higherIsBetter: true, unit: 'currency' },
             { id: 'cancellation_rate_pct', label: 'Cancellation Rate', target: '<5%', higherIsBetter: false, unit: 'percentage' },
             { id: 'repeat_booking_rate_pct', label: 'Repeat Booking Rate', target: '>20%', higherIsBetter: true, unit: 'percentage' },
-
-            // Payment Analytics
-            { id: 'total_revenue_collected', label: 'Total Revenue Collected', target: '>$100k', higherIsBetter: true, unit: 'currency' },
-            { id: 'pending_payments', label: 'Outstanding / Pending Payments', target: '<$5k', higherIsBetter: false, unit: 'currency' },
-            { id: 'avg_payment_value', label: 'Average Payment Value', target: '>$750', higherIsBetter: true, unit: 'currency' },
-            { id: 'revenue_growth_rate_pct', label: 'Revenue Growth Rate', target: '>5%', higherIsBetter: true, unit: 'percentage' },
-            { id: 'refund_chargeback_rate_pct', label: 'Refund / Chargeback Rate', target: '<2%', higherIsBetter: false, unit: 'percentage' },
         ];
 
         const processKpis = (config: any[]): KPIMetric[] => {
@@ -92,17 +141,23 @@ export default function AnalysisPage() {
                             : (Number(value) <= targetValue ? 'good' : 'warning');
                         break;
                     case 'seconds':
+                        const targetInSeconds = conf.target.includes('hr') ? targetValue * 3600 : targetValue * 60;
                         displayValue = formatDurationFromSeconds(Number(value));
                         status = conf.higherIsBetter 
-                            ? (Number(value) >= targetValue * 60 ? 'good' : 'warning') 
-                            : (Number(value) <= targetValue * 60 ? 'good' : 'warning');
+                            ? (Number(value) >= targetInSeconds ? 'good' : 'warning') 
+                            : (Number(value) <= targetInSeconds ? 'good' : 'warning');
                         break;
                     case 'rating':
                         displayValue = `${Number(value).toFixed(1)}/5`;
                         status = Number(value) >= targetValue ? 'good' : 'warning';
                         break;
                     case 'currency':
-                        displayValue = `$${(Number(value)/1000).toFixed(1)}k`;
+                        const kValue = (Number(value)/1000);
+                        if (kValue > 0) {
+                            displayValue = `$${kValue.toFixed(1)}k`;
+                        } else {
+                             displayValue = `$${Number(value).toFixed(2)}`;
+                        }
                         status = conf.higherIsBetter
                             ? (Number(value) >= targetValue ? 'good' : 'warning')
                             : (Number(value) <= targetValue ? 'good' : 'warning');
@@ -171,7 +226,9 @@ export default function AnalysisPage() {
     };
     
     fetchKpis();
-  }, []);
+  }, [isAuthenticated]);
+
+  const allMetrics = [...executiveMetrics, ...kpiMetrics];
 
   return (
     <div className="space-y-6">
@@ -195,12 +252,11 @@ export default function AnalysisPage() {
               <TabsTrigger value="customers">Customers</TabsTrigger>
               <TabsTrigger value="leads">Leads</TabsTrigger>
               <TabsTrigger value="bookings">Bookings</TabsTrigger>
-              <TabsTrigger value="others">Others</TabsTrigger>
             </TabsList>
             <TabsContent value="customers">
               <KpiSection 
                 title="KPIs - Customers" 
-                kpiIds={['total_customers', 'new_customers', 'avg_spend_per_customer', 'top_customer_locations', 'customer_conversion_rate_pct', 'customer_satisfaction_avg_rating']}
+                kpiIds={['total_customers', 'new_customers', 'avg_spend_per_customer']}
                 metrics={kpiMetrics}
                 loading={loading}
               />
@@ -221,19 +277,12 @@ export default function AnalysisPage() {
                 loading={loading}
               />
             </TabsContent>
-            <TabsContent value="others">
-              <KpiSection
-                title="KPIs - Others [Payment Analytics]"
-                kpiIds={['total_revenue_collected', 'pending_payments', 'avg_payment_value', 'revenue_growth_rate_pct', 'refund_chargeback_rate_pct']}
-                metrics={kpiMetrics}
-                loading={loading}
-              />
-            </TabsContent>
           </Tabs>
           
+          <AdditionalAnalytics />
           <AiPerformance />
-          <QualityAssurance />
-          <Alerts />
+          {/* <QualityAssurance /> */}
+          <Alerts metrics={allMetrics} loading={loading} />
         </div>
       </div>
     </div>

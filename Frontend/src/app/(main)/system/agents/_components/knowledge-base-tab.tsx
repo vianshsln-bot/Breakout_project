@@ -45,7 +45,6 @@ export function KnowledgeBaseTab() {
 
     const fetchDocuments = async () => {
         setLoading(true);
-        setError(null);
         try {
             const response = await fetch(`${XI_BASE_URL}/knowledge-base`, {
                 headers: {
@@ -58,8 +57,10 @@ export function KnowledgeBaseTab() {
             }
             const data: ApiResponse = await response.json();
             setDocuments(data.documents || []);
+            setError(null); // Clear error on success
         } catch (err) {
-            setError('Could not load knowledge base documents.');
+            const errorMessage = err instanceof Error ? err.message : 'Could not load knowledge base documents.';
+            setError(errorMessage);
             console.error(err);
         } finally {
             setLoading(false);
@@ -110,8 +111,8 @@ export function KnowledgeBaseTab() {
     );
 
     const renderDocumentList = () => {
-        if (loading) return <div className="text-center p-8">Loading documents...</div>;
-        if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
+        if (loading && documents.length === 0) return <div className="text-center p-8">Loading documents...</div>;
+        if (error && documents.length === 0) return <div className="text-center p-8 text-red-500">{error}</div>;
         if (filteredDocuments.length === 0) return <div className="text-center p-8 text-gray-500">No documents found.</div>;
 
         return (
@@ -301,7 +302,7 @@ function CreateDocumentDialog({ open, onOpenChange, onSuccess, apiKey }: { open:
             onSuccess();
             handleOpenChange(false);
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
+            toast({ variant: 'destructive', title: 'Error adding URL', description: (error as Error).message });
         } finally {
             setIsSubmitting(false);
         }
@@ -357,7 +358,7 @@ function CreateDocumentDialog({ open, onOpenChange, onSuccess, apiKey }: { open:
             onSuccess();
             handleOpenChange(false);
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
+            toast({ variant: 'destructive', title: 'Error creating text document', description: (error as Error).message });
         } finally {
             setIsSubmitting(false);
         }
@@ -385,7 +386,7 @@ function CreateDocumentDialog({ open, onOpenChange, onSuccess, apiKey }: { open:
             onSuccess();
             handleOpenChange(false);
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
+            toast({ variant: 'destructive', title: 'Error uploading file', description: (error as Error).message });
         } finally {
             setIsSubmitting(false);
         }
@@ -444,14 +445,14 @@ function CreateDocumentDialog({ open, onOpenChange, onSuccess, apiKey }: { open:
                                     <div className="spacey-2"><Label htmlFor="targetAudience">Target users/customers</Label><Textarea id="targetAudience" value={textData.targetAudience} onChange={handleTextDataChange} /></div>
                                 </fieldset>
                                  <fieldset className="space-y-4 p-4 border rounded-lg">
-                                    <legend className="text-lg font-semibold px-2">Policies & Procedures</legend>
-                                    <div className="space-y-2"><Label htmlFor="policies">HR & work policies (leave, attendance, WFH, etc.)</Label><Textarea id="policies" value={textData.policies} onChange={handleTextDataChange} /></div>
+                                    <legend className="text-lg font-semibold px-2">Policies &amp; Procedures</legend>
+                                    <div className="space-y-2"><Label htmlFor="policies">HR &amp; work policies (leave, attendance, WFH, etc.)</Label><Textarea id="policies" value={textData.policies} onChange={handleTextDataChange} /></div>
                                     <div className="space-y-2"><Label htmlFor="codeOfConduct">Code of conduct / basic company rules</Label><Textarea id="codeOfConduct" value={textData.codeOfConduct} onChange={handleTextDataChange} /></div>
                                     <div className="space-y-2"><Label htmlFor="dataPrivacy">Security or data privacy do’s and don’ts</Label><Textarea id="dataPrivacy" value={textData.dataPrivacy} onChange={handleTextDataChange} /></div>
                                     <div className="space-y-2"><Label htmlFor="sops">Department-wise SOPs (if available)</Label><Textarea id="sops" value={textData.sops} onChange={handleTextDataChange} /></div>
                                 </fieldset>
                                 <fieldset className="space-y-4 p-4 border rounded-lg">
-                                    <legend className="text-lg font-semibold px-2">Customer Support & Knowledge</legend>
+                                    <legend className="text-lg font-semibold px-2">Customer Support &amp; Knowledge</legend>
                                     <div className="space-y-2"><Label htmlFor="faqs">Top FAQs customers usually ask</Label><Textarea id="faqs" value={textData.faqs} onChange={handleTextDataChange} /></div>
                                     <div className="space-y-2"><Label htmlFor="commonIssues">Common issues and how to fix or answer them</Label><Textarea id="commonIssues" value={textData.commonIssues} onChange={handleTextDataChange} /></div>
                                     <div className="space-y-2"><Label htmlFor="internalDocs">Any useful internal documents or help articles</Label><Textarea id="internalDocs" value={textData.internalDocs} onChange={handleTextDataChange} /></div>
@@ -490,4 +491,5 @@ function CreateDocumentDialog({ open, onOpenChange, onSuccess, apiKey }: { open:
         </Dialog>
     )
 }
+
     

@@ -94,4 +94,3 @@ export function ComputeRagIndexDialog({ open, onOpenChange, document, apiKey, on
         </Dialog>
     );
 }
-
