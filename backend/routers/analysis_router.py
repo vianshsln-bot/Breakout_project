@@ -205,7 +205,6 @@ def get_analysis_llmkpis():
 
 @router.get("/charts")
 def get_analysis_charts():
-def get_analysis_charts():
     """
     Returns key chart datasets for visual analytics by joining call and call_analysis on conv_id.
     """
