@@ -292,6 +292,7 @@ class PayUManager:
         self.merchant_key = os.getenv("PAYU_KEY")
         self.merchant_salt = os.getenv("PAYU_SALT")
         self.merchant_id = os.getenv("MID")
+        self.API_BASE_URL = os.getenv("API_BASE_URL")
 
         # Validate all credentials are present
         if not all([self.client_id, self.client_secret, self.merchant_key, 
