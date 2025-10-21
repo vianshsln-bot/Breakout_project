@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from typing import List, Dict, Any
 from datetime import timedelta, datetime, timezone
 from backend.config.supabase_client import supabase
+from collections import defaultdict
+
 
 router = APIRouter(prefix="/kpis", tags=["KPIs"])
 
