@@ -110,5 +110,5 @@ async def payu_webhook(request: Request) -> Response:
     computed = payu_reverse_hash(payload, PAYU_SALT)
     if computed != received:
         return Response(content="invalid signature", status_code=status.HTTP_400_BAD_REQUEST)
-    # TODO: your business logic (idempotent persist/fulfillment) using payload["txnid"], payload["mihpayid"]
+    print("PayU Webhook received valid payload:", payload)
     return Response(content="ok", status_code=status.HTTP_200_OK)
