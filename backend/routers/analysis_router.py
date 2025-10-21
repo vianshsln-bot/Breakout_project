@@ -209,9 +209,24 @@ def get_analysis_charts():
     Returns key chart datasets for visual analytics.
     """
     try:
-        # Fetch joined call + call_analysis data
-        query = supabase.rpc("get_call_analysis_joined").execute() if hasattr(supabase, "rpc") else supabase.table("call_analysis").select("*").execute()
-        analysis_records = query.data or []
+        ## Fetch joined call + call_analysis data
+        ##query = supabase.rpc("get_call_analysis_joined").execute() if hasattr(supabase, "rpc") else supabase.table("call_analysis").select("*").execute()
+        ##analysis_records = query.data or []
+
+        # Fetch data directly from both tables
+        call_data = supabase.table("call").select("conv_id, date_time").execute().data or []
+        analysis_data = supabase.table("call_analysis").select("*").execute().data or []
+        
+        # Create a dictionary for quick date lookup
+        call_date_map = {c["conv_id"]: c["date_time"] for c in call_data if "date_time" in c}
+        
+        # Merge both sources
+        analysis_records = []
+        for a in analysis_data:
+            conv_id = a.get("conv_id")
+            a["date_time"] = call_date_map.get(conv_id)
+            analysis_records.append(a)
+
 
         if not analysis_records:
             return {"charts": []}
