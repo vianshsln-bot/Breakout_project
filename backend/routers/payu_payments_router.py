@@ -1,6 +1,11 @@
 from datetime import date, datetime, time
 from fastapi import APIRouter, HTTPException, Depends, status
 from supabase_auth import Optional
+from fastapi import Request, Response
+import hashlib, os
+
+
+
 from backend.config.payu_client import (
     TransactionPage,
     get_payu_client,
@@ -66,3 +71,46 @@ async def check_transaction_details(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+
+
+l
+PAYU_SALT = os.getenv("PAYU_SALT")
+def payu_reverse_hash(p: dict, salt: str) -> str:
+    # Reverse-hash per PayU:
+    # SALT|status||||||udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key
+    # If additionalCharges is present, prepend it: additionalCharges|SALT|status|... (same tail) 
+    seq = [
+        salt,
+        p.get("status", ""),
+        "", "", "", "", "",  # six empty pipes
+        p.get("udf5", ""),
+        p.get("udf4", ""),
+        p.get("udf3", ""),
+        p.get("udf2", ""),
+        p.get("udf1", ""),
+        p.get("email", ""),
+        p.get("firstname", ""),
+        p.get("productinfo", ""),
+        p.get("amount", ""),
+        p.get("txnid", ""),
+        p.get("key", ""),
+    ]
+    base = "|".join(seq)
+    if p.get("additionalCharges"):
+        base = f"{p['additionalCharges']}|{base}"
+    return hashlib.sha512(base.encode("utf-8")).hexdigest()
+
+@router.post("/webhooks/payu")
+async def payu_webhook(request: Request) -> Response:
+    form = await request.form()
+    payload = {k: (v.strip() if isinstance(v, str) else v) for k, v in form.items()}
+    received = payload.get("hash", "")
+    if not PAYU_SALT or not received:
+        return Response(content="invalid configuration or payload", status_code=status.HTTP_400_BAD_REQUEST)
+    computed = payu_reverse_hash(payload, PAYU_SALT)
+    if computed != received:
+        return Response(content="invalid signature", status_code=status.HTTP_400_BAD_REQUEST)
+    # TODO: your business logic (idempotent persist/fulfillment) using payload["txnid"], payload["mihpayid"]
+    return Response(content="ok", status_code=status.HTTP_200_OK)
