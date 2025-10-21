@@ -103,6 +103,9 @@ def payu_reverse_hash(p: dict, salt: str) -> str:
 @router.post("/webhooks/payu")
 async def payu_webhook(request: Request) -> Response:
     form = await request.form()
+    print("\n\n")
+    print("Received PayU Webhook payload:", form)
+    print("\n\n")
     payload = {k: (v.strip() if isinstance(v, str) else v) for k, v in form.items()}
     received = payload.get("hash", "")
     if not PAYU_SALT or not received:
