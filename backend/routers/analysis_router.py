@@ -205,91 +205,95 @@ def get_analysis_llmkpis():
 
 @router.get("/charts")
 def get_analysis_charts():
+def get_analysis_charts():
     """
-    Returns key chart datasets for visual analytics.
+    Returns key chart datasets for visual analytics by joining call and call_analysis on conv_id.
     """
     try:
-        ## Fetch joined call + call_analysis data
-        ##query = supabase.rpc("get_call_analysis_joined").execute() if hasattr(supabase, "rpc") else supabase.table("call_analysis").select("*").execute()
-        ##analysis_records = query.data or []
+        # ✅ Step 1: Fetch data from both tables
+        call_response = supabase.table("call").select("conv_id, date_time").execute()
+        analysis_response = supabase.table("call_analysis").select("*").execute()
 
-        # Fetch data directly from both tables
-        call_data = supabase.table("call").select("conv_id, date_time").execute().data or []
-        analysis_data = supabase.table("call_analysis").select("*").execute().data or []
-        
-        # Create a dictionary for quick date lookup
-        call_date_map = {c["conv_id"]: c["date_time"] for c in call_data if "date_time" in c}
-        
-        # Merge both sources
+        call_data = call_response.data or []
+        analysis_data = analysis_response.data or []
+
+        if not call_data or not analysis_data:
+            return {"charts": [], "message": "No data available in one or both tables."}
+
+        # ✅ Step 2: Create a mapping of conv_id → date_time from call table
+        call_date_map = {row["conv_id"]: row.get("date_time") for row in call_data if row.get("date_time")}
+
+        # ✅ Step 3: Merge both datasets by conv_id
         analysis_records = []
-        for a in analysis_data:
-            conv_id = a.get("conv_id")
-            a["date_time"] = call_date_map.get(conv_id)
-            analysis_records.append(a)
-
+        for row in analysis_data:
+            conv_id = row.get("conv_id")
+            if conv_id in call_date_map:
+                row["date_time"] = call_date_map[conv_id]
+                analysis_records.append(row)
 
         if not analysis_records:
-            return {"charts": []}
+            return {"charts": [], "message": "No matching conversation IDs between tables."}
 
-        # Chart 1: Analysis Volume Over Time
+        # ✅ Chart 1: Analysis Volume Over Time
         volume_by_date = defaultdict(int)
         for r in analysis_records:
-            # You'll need to also fetch `date_time` from call table
-            if "date_time" in r:
+            if "date_time" in r and r["date_time"]:
                 date_str = r["date_time"].split("T")[0]
                 volume_by_date[date_str] += 1
 
         chart1 = {
             "title": "Analysis Volume Over Time",
-            "description": "Calls analyzed per day",
             "x_axis": list(volume_by_date.keys()),
             "y_axis": list(volume_by_date.values()),
             "chart_type": "line"
         }
 
-        # Chart 2: Average Sentiment by Failed Conversion Reason
+        # ✅ Chart 2: Average Sentiment by Failed Conversion Reason
         sentiment_by_reason = defaultdict(list)
         for r in analysis_records:
             reason = r.get("failed_conversion_reason")
             if reason:
-                sentiment_by_reason[reason].append(float(r.get("sentiment_score", 0)))
+                try:
+                    sentiment_by_reason[reason].append(float(r.get("sentiment_score") or 0))
+                except (TypeError, ValueError):
+                    continue
 
         avg_sentiment = {
-            reason: sum(vals) / len(vals)
-            for reason, vals in sentiment_by_reason.items()
+            reason: round(sum(vals) / len(vals), 3)
+            for reason, vals in sentiment_by_reason.items() if vals
         }
 
         chart2 = {
             "title": "Average Sentiment by Failed Conversion Reason",
             "x_axis": list(avg_sentiment.keys()),
-            "y_axis": [round(v, 3) for v in avg_sentiment.values()],
+            "y_axis": list(avg_sentiment.values()),
             "chart_type": "bar"
         }
 
-        # Chart 3: AI Detection Trend Over Time (weekly)
+        # ✅ Chart 3: AI Detection Trend Over Time
         ai_by_week = defaultdict(lambda: {"ai": 0, "total": 0})
         for r in analysis_records:
-            if "date_time" in r:
+            if "date_time" in r and r["date_time"]:
                 date_obj = datetime.fromisoformat(r["date_time"].split("T")[0])
-                week_start = date_obj.strftime("%Y-%W")  # Year-Week format
+                week_start = date_obj.strftime("%Y-%W")
                 ai_by_week[week_start]["total"] += 1
                 if r.get("ai_detect_flag"):
                     ai_by_week[week_start]["ai"] += 1
 
         ai_trend = {
-            week: (vals["ai"] / vals["total"]) * 100
-            for week, vals in ai_by_week.items()
-            if vals["total"] > 0
+            week: round((vals["ai"] / vals["total"]) * 100, 2)
+            for week, vals in ai_by_week.items() if vals["total"] > 0
         }
 
         chart3 = {
             "title": "AI Detection Trend Over Time",
             "x_axis": list(ai_trend.keys()),
-            "y_axis": [round(v, 2) for v in ai_trend.values()],
+            "y_axis": list(ai_trend.values()),
             "chart_type": "line"
         }
 
+        # ✅ Final Response
         return {"charts": [chart1, chart2, chart3]}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching chart data: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching chart data: {str(e)}")
