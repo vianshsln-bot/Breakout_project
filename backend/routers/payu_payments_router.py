@@ -74,8 +74,6 @@ async def check_transaction_details(
 
 
 
-
-l
 PAYU_SALT = os.getenv("PAYU_SALT")
 def payu_reverse_hash(p: dict, salt: str) -> str:
     # Reverse-hash per PayU:
