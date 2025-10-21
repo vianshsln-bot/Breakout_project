@@ -1,0 +1,39 @@
+
+{
+  "main": [
+    {
+      "section": "Analytics",
+      "items": [
+        { "href": "/dashboard", "label": "Dashboard", "icon": "LayoutDashboard", "roles": ["admin", "employee"] },
+        { "href": "/analysis", "label": "Analysis", "icon": "BarChart3", "roles": ["admin", "employee"] },
+        { "href": "/live-monitoring", "label": "Live Monitoring", "icon": "Radio", "roles": ["admin"] }
+      ]
+    },
+    {
+      "section": "Operations",
+      "items": [
+        { "href": "/customers", "label": "Customers Hub", "icon": "Users", "roles": ["admin", "employee"] },
+        { "href": "/calls", "label": "Calls", "icon": "Phone", "roles": ["admin", "employee"] },
+        { "href": "/bookings", "label": "Bookings", "icon": "CalendarCheck", "roles": ["admin", "employee"] }
+      ]
+    },
+    {
+      "section": "System",
+      "items": [
+        { "href": "/system/whatsapp", "label": "WhatsApp", "icon": "MessageSquare", "roles": ["admin"] },
+        { "href": "/system/themes", "label": "Themes", "icon": "Palette", "roles": ["admin", "employee"] },
+        { "href": "/system/validation", "label": "Validation", "icon": "Shield", "roles": ["admin"] },
+        { "href": "/system/agents", "label": "Agents", "icon": "Bot", "roles": ["admin", "employee"] },
+        { "href": "/system/settings", "label": "Settings", "icon": "SettingsIcon", "roles": ["admin", "employee"] }
+      ]
+    }
+  ],
+  "settings": [
+    { "id": "profile", "label": "Profile", "icon": "User", "roles": ["admin", "employee"] },
+    { "id": "language", "label": "Language", "icon": "Globe", "roles": ["admin", "employee"] },
+    { "id": "integrations", "label": "Integrations", "icon": "Package", "roles": ["admin"] },
+    { "id": "notifications", "label": "Notifications", "icon": "Bell", "roles": ["admin", "employee"] },
+    { "id": "access", "label": "Access Control", "icon": "Key", "roles": ["admin"] },
+    { "id": "logout", "label": "Logout", "icon": "LogOut", "roles": ["admin", "employee"] }
+  ]
+}

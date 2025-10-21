@@ -1,7 +1,7 @@
 # routers/kpi_router.py
 import enum
 from fastapi import APIRouter, HTTPException, Query, status
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import timedelta, datetime, timezone
 from backend.config.supabase_client import supabase
 from collections import defaultdict
@@ -19,6 +19,53 @@ class TimePeriod(str, enum.Enum):
     quarterly = "quarterly"
     half_yearly = "half_yearly"
     yearly = "yearly"
+
+
+
+@router.get("/bookings", response_model=List[Dict[str, Any]])
+async def get_booking_kpis(
+    start_time: Optional[datetime] = Query(None, description="ISO 8601 start timestamp"),
+    end_time: Optional[datetime]   = Query(None, description="ISO 8601 end timestamp"),
+    interval: str                  = Query("full", description="full, daily, weekly, monthly, quarterly, half_yearly, yearly")
+):
+    """
+    Returns booking KPIs:
+    - Total Bookings
+    - Booking Conversion Rate
+    - Average Booking Value (ABV)
+    - Cancellation Rate
+    - Repeat Booking Rate
+    - Total Gross Revenue
+    - Total Collections
+    """
+    try:
+        # Call combined metrics RPC
+        resp = supabase.rpc(
+            'get_booking_metrics',
+            {
+                'p_start_time': start_time,
+                'p_end_time': end_time,
+                'p_interval': interval
+            }
+        ).execute()
+        if not resp.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No KPI data found.")
+        row = resp.data[0]
+
+        return [
+            {"name": "total_bookings", "value": row['total_bookings']},
+            {"name": "booking_conversion_rate", "value": round(row['booking_conversion_rate'], 2), "unit": "%"},
+            {"name": "avg_booking_value", "value": round(row['avg_booking_value'], 2), "unit": "currency"},
+            {"name": "cancellation_rate", "value": round(row['cancellation_rate'], 2), "unit": "%"},
+            {"name": "repeat_booking_rate", "value": round(row['repeat_booking_rate'], 2), "unit": "%"},
+            {"name": "total_gross_revenue", "value": float(row['total_gross_revenue']), "unit": "currency"},
+            {"name": "total_collections", "value": float(row['total_collections']), "unit": "currency"},
+        ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.get("/customers", response_model=List[Dict[str, Any]])
@@ -81,37 +128,6 @@ async def get_lead_kpis():
             {"name": "qualified_lead_ratio", "value": round(kpis['qualified_lead_ratio'], 2), "unit": "%"},
         ]
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.get("/bookings", response_model=List[Dict[str, Any]])
-async def get_booking_kpis():
-    """
-    Returns booking KPIs:
-    - Total Bookings
-    - Booking Conversion Rate
-    - Average Booking Value (ABV)
-    - Cancellation Rate
-    - Repeat Booking Rate
-    """
-    try:
-        # Call your new function one time
-        response = supabase.rpc('get_all_booking_kpis').execute()
-        
-        # The result is the first item in the data list
-        kpis = response.data[0]
-
-        return [
-            {"name": "total_bookings", "value": kpis['total_bookings']},
-            {"name": "booking_conversion_rate", "value": round(kpis['booking_conversion_rate'], 2), "unit": "%"},
-            {"name": "avg_booking_value", "value": round(kpis['avg_booking_value'], 2), "unit": "currency"},
-            {"name": "cancellation_rate", "value": round(kpis['cancellation_rate'], 2), "unit": "%"},
-            {"name": "repeat_booking_rate", "value": round(kpis['repeat_booking_rate'], 2), "unit": "%"},
-        ]
-        
-    except Exception as e:
-        # Handle cases where the rpc might fail or return no data
-        if not response.data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No KPI data found.")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 

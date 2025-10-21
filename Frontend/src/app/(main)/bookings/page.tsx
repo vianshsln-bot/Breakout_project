@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { IndianRupee, TrendingUp, Calendar, CreditCard } from 'lucide-react';
 import { Booking } from '@/lib/types';
-import { recentBookings as staticRecentBookings } from '@/lib/data';
 import { API_BASE_URL } from '@/lib/config';
+import { BookingHeatmap } from './_components/booking-heatmap';
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -14,19 +14,22 @@ export default function BookingsPage() {
   useEffect(() => {
     const fetchBookings = async () => {
       setLoading(true);
-      setError(null);
+      // Don't clear previous error, so UI can show stale data while retrying
+      // setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/bookings/?skip=0&limit=100`);
+        const response = await fetch(`${API_BASE_URL}/bookings/`);
         if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+           const errorText = await response.text();
+           throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
         }
         const data: Booking[] = await response.json();
         setBookings(data);
+        setError(null); // Clear error on success
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
         } else {
-          setError('An unexpected error occurred');
+          setError('An unexpected error occurred while fetching bookings.');
         }
       } finally {
         setLoading(false);
@@ -36,24 +39,13 @@ export default function BookingsPage() {
     fetchBookings();
   }, []);
 
-  const totalBookings = bookings.length > 0 ? bookings.length : staticRecentBookings.length;
-  const confirmedBookings = bookings.length > 0 
-    ? bookings.filter(b => b.booking_status === 'confirmed').length
-    : staticRecentBookings.filter(b => b.status === 'confirmed').length;
+  const totalBookings = bookings.length;
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'active').length;
   
-  // Using static data for revenue and avg value as it's not in the API response
-  const totalRevenue = staticRecentBookings.reduce((sum, b) => sum + (b.value || 0), 0);
-  const avgBookingValue = staticRecentBookings.length > 0 ? totalRevenue / staticRecentBookings.length : 0;
-
-  const paymentMethods = {
-    credit: staticRecentBookings.filter(b => b.paymentMethod === 'credit').length,
-    debit: staticRecentBookings.filter(b => b.paymentMethod === 'debit').length,
-    wallet: staticRecentBookings.filter(b => b.paymentMethod === 'wallet').length,
-    bank: staticRecentBookings.filter(b => b.paymentMethod === 'bank').length
-  };
+  const paymentMethods = { credit: 42, debit: 28, wallet: 15, bank: 15 };
 
   const renderBookingsTable = () => {
-    if (loading) {
+    if (loading && bookings.length === 0) {
       return (
         <div className="flex justify-center items-center h-64">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
@@ -61,11 +53,11 @@ export default function BookingsPage() {
       );
     }
 
-    if (error) {
+    if (error && bookings.length === 0) {
       return (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-red-500 text-center">
-            <p>Failed to load booking data.</p>
+        <div className="flex justify-center items-center h-64 bg-red-50 rounded-lg">
+          <div className="text-red-600 text-center">
+            <p className="font-bold">Failed to load booking data.</p>
             <p className="text-sm">{error}</p>
           </div>
         </div>
@@ -79,34 +71,30 @@ export default function BookingsPage() {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Booking ID</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slot ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment ID</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event ID</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conversation ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guests</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {bookings.map((booking) => (
               <tr key={booking.booking_id} className="hover:bg-gray-50 cursor-pointer">
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">{booking.booking_id}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{booking.customer_id}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{booking.slot_id}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{booking.payment_id}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{booking.conv_id}</td>
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{booking.booking_id.slice(-8)}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{booking.customer_id.slice(-8)}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{booking.event_id.slice(-12)}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">
-                  {new Date(booking.booking_date).toLocaleString()}
+                  {new Date(booking.start_time).toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600">{booking.guest_count}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{booking.conv_id || 'N/A'}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    booking.booking_status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                    booking.booking_status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                    booking.booking_status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                    'bg-blue-100 text-blue-800'
+                  <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                    booking.status === 'confirmed' || booking.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
+                    booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                    booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
                   }`}>
-                    {booking.booking_status}
+                    {booking.status}
                   </span>
                 </td>
               </tr>
@@ -144,31 +132,15 @@ export default function BookingsPage() {
 
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">Confirmed</p>
+            <p className="text-sm text-gray-600">Confirmed/Active</p>
             <Calendar className="w-5 h-5 text-emerald-600" />
           </div>
           <p className="text-3xl font-bold text-gray-900">{confirmedBookings}</p>
           <p className="text-xs text-gray-500 mt-2">{totalBookings > 0 ? ((confirmedBookings / totalBookings) * 100).toFixed(1) : '0.0'}% completion rate</p>
         </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">Total Revenue</p>
-            <IndianRupee className="w-5 h-5 text-emerald-600" />
-          </div>
-          <p className="text-3xl font-bold text-emerald-600">₹{totalRevenue.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-2">Last 30 days (mock)</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">Avg Booking Value</p>
-            <IndianRupee className="w-5 h-5 text-blue-600" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">₹{Math.round(avgBookingValue).toLocaleString()}</p>
-          <p className="text-xs text-emerald-600 mt-2">+15% vs target (mock)</p>
-        </div>
       </div>
+      
+      <BookingHeatmap bookings={bookings} loading={loading} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
@@ -204,37 +176,37 @@ export default function BookingsPage() {
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-gray-600">Credit Card</span>
-                      <span className="font-medium text-gray-900">{paymentMethods.credit} ({((paymentMethods.credit / staticRecentBookings.length) * 100).toFixed(0)}%)</span>
+                      <span className="font-medium text-gray-900">{paymentMethods.credit} ({((paymentMethods.credit / 100) * 100).toFixed(0)}%)</span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500" style={{ width: `${(paymentMethods.credit / staticRecentBookings.length) * 100}%` }} />
+                      <div className="h-full bg-blue-500" style={{ width: `${(paymentMethods.credit / 100) * 100}%` }} />
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-gray-600">Debit Card</span>
-                      <span className="font-medium text-gray-900">{paymentMethods.debit} ({((paymentMethods.debit / staticRecentBookings.length) * 100).toFixed(0)}%)</span>
+                      <span className="font-medium text-gray-900">{paymentMethods.debit} ({((paymentMethods.debit / 100) * 100).toFixed(0)}%)</span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500" style={{ width: `${(paymentMethods.debit / staticRecentBookings.length) * 100}%` }} />
+                      <div className="h-full bg-emerald-500" style={{ width: `${(paymentMethods.debit / 100) * 100}%` }} />
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-gray-600">Wallet</span>
-                      <span className="font-medium text-gray-900">{paymentMethods.wallet} ({((paymentMethods.wallet / staticRecentBookings.length) * 100).toFixed(0)}%)</span>
+                      <span className="font-medium text-gray-900">{paymentMethods.wallet} ({((paymentMethods.wallet / 100) * 100).toFixed(0)}%)</span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-purple-500" style={{ width: `${(paymentMethods.wallet / staticRecentBookings.length) * 100}%` }} />
+                      <div className="h-full bg-purple-500" style={{ width: `${(paymentMethods.wallet / 100) * 100}%` }} />
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-gray-600">Bank Transfer</span>
-                      <span className="font-medium text-gray-900">{paymentMethods.bank} ({((paymentMethods.bank / staticRecentBookings.length) * 100).toFixed(0)}%)</span>
+                      <span className="font-medium text-gray-900">{paymentMethods.bank} ({((paymentMethods.bank / 100) * 100).toFixed(0)}%)</span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-amber-500" style={{ width: `${(paymentMethods.bank / staticRecentBookings.length) * 100}%` }} />
+                      <div className="h-full bg-amber-500" style={{ width: `${(paymentMethods.bank / 100) * 100}%` }} />
                     </div>
                   </div>
                 </div>
@@ -268,3 +240,5 @@ export default function BookingsPage() {
     </div>
   );
 }
+
+    

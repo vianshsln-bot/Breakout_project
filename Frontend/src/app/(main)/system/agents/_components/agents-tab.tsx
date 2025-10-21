@@ -34,7 +34,6 @@ export function AgentsTab({ onAgentCreated }: { onAgentCreated: () => void }) {
 
     const fetchAgents = async () => {
         setLoading(true);
-        setError(null);
         try {
             const response = await fetch(`${XI_BASE_URL}/agents`, {
                 headers: {
@@ -57,9 +56,10 @@ export function AgentsTab({ onAgentCreated }: { onAgentCreated: () => void }) {
             } else {
                  setAgents([]);
             }
-
+            setError(null); // Clear error on success
         } catch (err) {
-            setError('Failed to fetch agents. Please try again later.');
+            const errorMessage = err instanceof Error ? err.message : 'Failed to fetch agents. Please try again later.';
+            setError(errorMessage);
             console.error(err);
         } finally {
             setLoading(false);
@@ -87,7 +87,7 @@ export function AgentsTab({ onAgentCreated }: { onAgentCreated: () => void }) {
     );
 
     const renderAgentList = () => {
-        if (loading) {
+        if (loading && agents.length === 0) {
             return (
                 <div className="space-y-4">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -97,7 +97,7 @@ export function AgentsTab({ onAgentCreated }: { onAgentCreated: () => void }) {
             );
         }
 
-        if (error) {
+        if (error && agents.length === 0) {
             return <div className="text-red-600 bg-red-50 p-4 rounded-lg text-center">{error}</div>;
         }
 
@@ -215,3 +215,5 @@ export function AgentsTab({ onAgentCreated }: { onAgentCreated: () => void }) {
         </div>
     );
 }
+
+    

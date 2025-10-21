@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { Users, Calendar, TrendingUp, Search, Filter, Download } from 'lucide-react';
@@ -103,18 +104,18 @@ export default function CustomersHubPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
 
-  const [loadingCustomers, setLoadingCustomers] = useState(true);
-  const [loadingLeads, setLoadingLeads] = useState(true);
-  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loading, setLoading] = useState({
+      customers: true,
+      leads: true,
+      events: true,
+  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const fetchData = async () => {
-      setError(null);
-      setLoadingCustomers(true);
-      setLoadingLeads(true);
-      setLoadingEvents(true);
+      // Set loading true for all, but don't clear errors to show stale data
+      setLoading({ customers: true, leads: true, events: true });
 
       try {
         const [customersResponse, leadsResponse, eventsResponse] = await Promise.all([
@@ -123,9 +124,9 @@ export default function CustomersHubPage() {
           fetch(`${API_BASE_URL}/events/?skip=0&limit=100`),
         ]);
 
-        if (!customersResponse.ok) throw new Error(`HTTP ${customersResponse.status} on customers`);
-        if (!leadsResponse.ok) throw new Error(`HTTP ${leadsResponse.status} on leads`);
-        if (!eventsResponse.ok) throw new Error(`HTTP ${eventsResponse.status} on events`);
+        if (!customersResponse.ok) throw new Error(`HTTP error on customers: ${customersResponse.status} ${await customersResponse.text()}`);
+        if (!leadsResponse.ok) throw new Error(`HTTP error on leads: ${leadsResponse.status} ${await leadsResponse.text()}`);
+        if (!eventsResponse.ok) throw new Error(`HTTP error on events: ${eventsResponse.status} ${await eventsResponse.text()}`);
 
         const [customersDataRaw, leadsDataRaw, eventsDataRaw] = await Promise.all([
           customersResponse.json(),
@@ -134,6 +135,8 @@ export default function CustomersHubPage() {
         ]);
 
         if (cancelled) return;
+        
+        setError(null); // Clear errors on full success
 
         // Defensive: if API returns single object instead of array, coerce to array
         const customersArray = Array.isArray(customersDataRaw) ? customersDataRaw : [customersDataRaw];
@@ -148,15 +151,13 @@ export default function CustomersHubPage() {
         setLeads(normalizedLeads);
         setEvents(normalizedEvents);
 
-        setLoadingCustomers(false);
-        setLoadingLeads(false);
-        setLoadingEvents(false);
       } catch (err) {
         console.error('❌ Error fetching data:', err);
-        setError(err instanceof Error ? err.message : 'Unexpected error');
-        setLoadingCustomers(false);
-        setLoadingLeads(false);
-        setLoadingEvents(false);
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred while fetching data.');
+      } finally {
+        if (!cancelled) {
+            setLoading({ customers: false, leads: false, events: false });
+        }
       }
     };
 
@@ -232,10 +233,12 @@ export default function CustomersHubPage() {
   };
 
   const renderContent = () => {
-    const loading =
-      activeTab === 'customers' ? loadingCustomers : activeTab === 'leads' ? loadingLeads : loadingEvents;
+    const isLoading =
+      activeTab === 'customers' ? loading.customers : activeTab === 'leads' ? loading.leads : loading.events;
+    
+    const hasData = activeTab === 'customers' ? customers.length > 0 : activeTab === 'leads' ? leads.length > 0 : events.length > 0;
 
-    if (loading) {
+    if (isLoading && !hasData) {
       return (
         <div className="flex justify-center items-center h-64">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
@@ -243,11 +246,11 @@ export default function CustomersHubPage() {
       );
     }
 
-    if (error) {
+    if (error && !hasData) {
       return (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-red-500 text-center">
-            <p>Failed to load data.</p>
+        <div className="flex justify-center items-center h-64 bg-red-50 rounded-lg">
+          <div className="text-red-600 text-center">
+            <p className="font-bold">Failed to load data.</p>
             <p className="text-sm">{error}</p>
           </div>
         </div>
@@ -505,3 +508,5 @@ export default function CustomersHubPage() {
     </div>
   );
 }
+
+    

@@ -15,6 +15,7 @@ from typing import Optional, Dict, Any,List
 from pydantic import BaseModel, Field, EmailStr, validator
 from dotenv import load_dotenv
 
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'keys.env'))
 
 # ============================================================================
 # EXCEPTION CLASSES

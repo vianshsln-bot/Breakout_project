@@ -1,3 +1,4 @@
+
 'use client';
 import { ApiCall as Call } from '@/lib/types';
 
@@ -10,7 +11,7 @@ interface CallListProps {
 }
 
 export function CallList({ calls, selectedCall, onSelectCall, loading, error }: CallListProps) {
-  if (loading) {
+  if (loading && calls.length === 0) { // Only show skeleton on initial load
     return (
       <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (

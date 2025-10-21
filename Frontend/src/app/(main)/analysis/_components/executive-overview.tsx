@@ -1,3 +1,4 @@
+
 'use client';
 
 import { KPICard } from '@/components/kpi-card';
@@ -23,7 +24,7 @@ export function ExecutiveOverview({ metrics, loading, error }: ExecutiveOverview
   if (error) {
     return (
       <div className="col-span-full bg-red-50 text-red-700 p-4 rounded-lg text-center mb-8">
-        <p>Failed to load KPI data.</p>
+        <p className="font-bold">Failed to load Executive Overview KPI data.</p>
         <p className="text-sm">{error}</p>
       </div>
     );

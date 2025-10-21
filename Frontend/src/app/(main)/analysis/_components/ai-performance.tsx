@@ -1,22 +1,67 @@
+
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Brain } from 'lucide-react';
 
-const aiMetrics = [
-  { label: 'Intent Recognition Accuracy', value: '94.2%', target: '85-90%', status: 'good' },
-  { label: 'Conversation Completion Rate', value: '76.4%', target: '60-70%', status: 'good' },
-  { label: 'Human Handoff Accuracy', value: '96.7%', target: '85-90%', status: 'good' },
-  { label: 'AI Deflection Rate', value: '58.3%', target: '40-60%', status: 'good' },
-  { label: 'Overall Quality Score', value: '89.7%', target: '80-85%', status: 'good' }
-];
-
-const confusionMatrix = [
-  ['Booking', 0.92, 0.05, 0.03],
-  ['Pricing', 0.04, 0.94, 0.02],
-  ['Support', 0.03, 0.02, 0.95]
-];
+interface AiMetric {
+  name: string;
+  value: number;
+  description: string;
+  output_format: string;
+}
 
 export function AiPerformance() {
+  const [metrics, setMetrics] = useState<AiMetric[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAiKpis = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('https://breakout-project.onrender.com/kpis/llmkpi');
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch AI KPIs: ${response.status} ${errorText}`);
+        }
+        const data = await response.json();
+        setMetrics(data.llmkpi || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load AI KPIs.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAiKpis();
+  }, []);
+
+  const renderKpiCards = () => {
+    if (loading && metrics.length === 0) {
+      return Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="p-4 bg-purple-50 rounded-lg border border-purple-100 h-24 animate-pulse" />
+      ));
+    }
+    
+    if (error && metrics.length === 0) {
+        return (
+            <div className="col-span-full bg-red-50 text-red-700 p-4 rounded-lg text-center">
+                <p>Failed to load AI KPI data.</p>
+                <p className="text-sm">{error}</p>
+            </div>
+        )
+    }
+
+    return metrics.map((metric) => (
+      <div key={metric.name} className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+        <p className="text-sm text-gray-600 mb-2">{metric.name}</p>
+        <p className="text-2xl font-bold text-gray-900">{metric.value.toFixed(2)}%</p>
+      </div>
+    ));
+  };
+
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <div className="flex items-center gap-2 mb-6">
@@ -24,15 +69,10 @@ export function AiPerformance() {
         <h2 className="text-2xl font-bold text-gray-900">AI Performance Analytics</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        {aiMetrics.map((metric) => (
-          <div key={metric.label} className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-            <p className="text-sm text-gray-600 mb-2">{metric.label}</p>
-            <p className="text-2xl font-bold text-gray-900">{metric.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {renderKpiCards()}
       </div>
-
+      {/*
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-gray-50 p-6 rounded-lg">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Intent Recognition Matrix</h3>
@@ -103,6 +143,7 @@ export function AiPerformance() {
           </div>
         </div>
       </div>
+      */}
     </div>
   );
 }

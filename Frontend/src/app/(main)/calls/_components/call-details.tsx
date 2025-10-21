@@ -1,3 +1,4 @@
+
 'use client';
 import { Play, Phone } from 'lucide-react';
 import { ApiCall as Call } from '@/lib/types';
@@ -21,7 +22,7 @@ export function CallDetails({ selectedCall }: CallDetailsProps) {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-gray-900">Call Details</h3>
         <button className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-          <Play className="w-4 h-4" />
+          <Play className="w-4 h-4 fill-white" />
         </button>
       </div>
 
@@ -46,7 +47,7 @@ export function CallDetails({ selectedCall }: CallDetailsProps) {
         </div>
         <div>
           <p className="text-sm text-gray-600 mb-2">Transcript</p>
-          <div className="p-3 bg-gray-50 rounded text-xs text-gray-700 max-h-40 overflow-y-auto">
+          <div className="p-3 bg-gray-50 rounded text-xs text-gray-700 max-h-40 overflow-y-auto border">
             {selectedCall.transcript}
           </div>
         </div>

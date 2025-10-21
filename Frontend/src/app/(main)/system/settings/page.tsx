@@ -1,16 +1,37 @@
 
 'use client';
 import { useState } from 'react';
-import { User, Globe, Bell, AlertTriangle, Package, Key, Shield } from 'lucide-react';
+import { User, Globe, Bell, Package, Key, LogOut, Icon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import settingsConfig from '@/config/roles.json';
 
-type SettingsTab = 'profile' | 'language' | 'integrations' | 'notifications' | 'alerts' | 'access';
+type SettingsTabId = 'profile' | 'language' | 'integrations' | 'notifications' | 'access' | 'logout';
+
+const iconMap: { [key: string]: Icon } = {
+  User,
+  Globe,
+  Bell,
+  Package,
+  Key,
+  LogOut,
+};
+
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const { user, logout } = useAuth();
+  const router = useRouter();
 
-  const [profile, setProfile] = useState({ name: 'Admin User', email: 'admin@example.com' });
+  const userRole = user?.role || 'employee';
+
+  const accessibleTabs = settingsConfig.settings.filter(tab => tab.roles.includes(userRole));
+  
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(accessibleTabs[0].id as SettingsTabId);
+
+  const [profile, setProfile] = useState({ name: user?.email?.split('@')[0] || 'User', email: user?.email || '' });
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -25,6 +46,15 @@ export default function SettingsPage() {
       description: "Your profile information has been updated.",
     });
   };
+  
+  const handleLogout = () => {
+      logout();
+      router.push('/login');
+      toast({
+          title: "Logged Out",
+          description: "You have been successfully logged out."
+      })
+  }
 
   const renderContent = () => {
     switch (activeTab) {
@@ -39,7 +69,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input type="email" name="email" value={profile.email} onChange={handleProfileChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                <input type="email" name="email" value={profile.email} onChange={handleProfileChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" readOnly />
               </div>
               <button onClick={saveProfile} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Changes</button>
             </div>
@@ -108,14 +138,6 @@ export default function SettingsPage() {
             </div>
           </div>
         );
-      case 'alerts':
-        return (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Alerts</h2>
-            <p className="text-gray-600">Configure thresholds and recipients for critical system alerts.</p>
-            {/* Alert configuration UI would go here */}
-          </div>
-        );
       case 'access':
         return (
           <div className="bg-white rounded-lg shadow-sm p-6">
@@ -129,26 +151,24 @@ export default function SettingsPage() {
                 <p className="font-medium text-gray-900">API Keys</p>
                 <p className="text-xs text-gray-500 mt-1">Manage API access</p>
               </button>
-              <button className="w-full p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50">
-                <p className="font-medium text-gray-900">Security</p>
-                <p className="text-xs text-gray-500 mt-1">Configure security settings</p>
-              </button>
             </div>
           </div>
+        );
+      case 'logout':
+        return (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Logout</h2>
+                <p className="text-gray-600 mb-4">Are you sure you want to log out of your account?</p>
+                <Button variant="destructive" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4"/>
+                    Logout
+                </Button>
+            </div>
         );
       default:
         return null;
     }
   };
-
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'language', label: 'Language', icon: Globe },
-    { id: 'integrations', label: 'Integrations', icon: Package },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'alerts', label: 'Alerts', icon: AlertTriangle },
-    { id: 'access', label: 'Access Control', icon: Key },
-  ];
 
   return (
     <div className="space-y-6">
@@ -161,20 +181,23 @@ export default function SettingsPage() {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-sm p-4">
             <nav className="space-y-1">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as SettingsTab)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <tab.icon className="w-5 h-5" />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
+              {accessibleTabs.map(tab => {
+                const Icon = iconMap[tab.icon];
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as SettingsTabId)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      activeTab === tab.id
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    } ${tab.id === 'logout' ? 'text-red-600 hover:bg-red-50' : ''}`}
+                  >
+                    {Icon && <Icon className="w-5 h-5" />}
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
             </nav>
           </div>
         </div>
