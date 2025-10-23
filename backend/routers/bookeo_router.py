@@ -17,7 +17,6 @@ import re
 router = APIRouter(prefix="/bookeo", tags=["bookeo"])
 
 def get_bookeo_client() -> BookeoAPI:
-    # Optionally make this a cached singleton if desired
     return BookeoAPI()
 
 # --------- Schemas ---------
