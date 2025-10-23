@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from supabase_auth import Optional
 from fastapi import Request, Response
 import hashlib, os
-from backend.config.bookeo import BookeoAPI, BookeoManager
+from backend.config.bookeo import BookeoAPI
 
 
 from backend.config.payu_client import (

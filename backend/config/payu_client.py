@@ -604,12 +604,12 @@ if __name__ == "__main__":
             tax=180.00,
             shippingCharge=50.00,
             discount=100.00,
-            adjustment=0.00,
+            adjustment=1.00,
             description="Premium service booking",
             minAmountForCustomer=500.00,
             customer=CustomerInfo(
                 name="Jane Smith",
-                email="jane.smith@example.com",
+                email="vianshsln@gmail.com",
                 phone="9123456789"
             ),
             udf=UDFInfo(
@@ -622,11 +622,11 @@ if __name__ == "__main__":
         
         print(detailed_request.invoiceNumber)
         detailed_response = manager.create_payment_link(detailed_request)
-        
-        print(f"✓ Payment Link: {detailed_response.payment_link}")
-        print(f"  Total: ₹{detailed_response.total_amount}")
-        print(f"  Due: ₹{detailed_response.due_amount}")
-        print(f"  Email Status: {detailed_response.email_status}\n")
+        print(detailed_response)
+        print(f"✓ Payment Link: {detailed_response.result.paymentLink}")
+        print(f"  Total: ₹{detailed_response.result.totalAmount}")
+        print(f"  Due: ₹{detailed_response.result.dueAmount}")
+        print(f"  Email Status: {detailed_response.result.emailStatus}\n")
 
         # check transaction details
         print("--- Checking Transaction Details ---")
