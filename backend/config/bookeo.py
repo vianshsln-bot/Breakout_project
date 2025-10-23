@@ -546,13 +546,11 @@ class BookeoAPI:
             payu_client = get_payu_client()
             # print(hold.get("totalPayable")["amount"])
             payment_link_request.subAmount=float(hold.get("totalPayable")["amount"])
-            payment_link_request.subAmount=float(50.0)
             if(payment_link_request.description==""):
                 payment_link_request.description=f"Payment for booking hold {hold_id}"
             if(payment_link_request.invoiceNumber==""):
                 payment_link_request.invoiceNumber=f"{hold_id}"
             payment_link_request.minAmountForCustomer=float(hold.get("totalPayable")["amount"])/2
-            payment_link_request.minAmountForCustomer=25.0
             print(payment_link_request)
             payment_link_response = payu_client.create_payment_link(payment_link_request)
             print(payment_link_response)
@@ -570,7 +568,7 @@ class BookeoAPI:
 
         # # Normalize PayU result shape
         # print("Payment link result:", payment_link_result ,"\n", type(payment_link_result.))
-        print("\n\n\n")
+        # print("\n\n\n")
         if not payment_link_response or payment_link_response.status!=0:
             return {
                 "success": False,
@@ -610,6 +608,7 @@ class BookeoAPI:
         """
         try:
             # -------- Validate booking reference --------
+            print(payu_payload,type(payu_payload),payu_payload.get("udf1") ,sep="\n",end="\n\n")
             booking_number = (payu_payload.get("udf1") or "").strip()
             if not booking_number:
                 self.logger.error("Missing booking number (udf1) in PayU payload")
