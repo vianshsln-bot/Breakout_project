@@ -598,7 +598,169 @@ class BookeoAPI:
             "discount_amount": payment_link_result.discount,
             "max_payments_allowed": payment_link_result.maxPaymentsAllowed,
 
-        }
+            }
+    def create_booking_payment_from_payu(
+        self,
+        payu_payload: Dict,
+        lang: str = "en-US",
+    ) -> Dict:
+        """
+        Map a PayU transaction payload to Bookeo's POST /bookings/{bookingNumber}/payments
+        and submit it with robust validation, logging, and error normalization.
+        """
+        try:
+            # -------- Validate booking reference --------
+            booking_number = (payu_payload.get("udf1") or "").strip()
+            if not booking_number:
+                self.logger.error("Missing booking number (udf1) in PayU payload")
+                return {
+                    "success": False,
+                    "source": "payu",
+                    "message": "Missing booking number (udf1) in PayU payload",
+                    "httpStatus": 400,
+                }
+
+            # -------- Validate transaction status --------
+            status = (payu_payload.get("status") or "").lower()
+            unmapped = (payu_payload.get("unmappedstatus") or "").lower()
+            if not (status == "success" or unmapped == "captured"):
+                self.logger.warning(f"PayU transaction not successful/captured: status={status}, unmapped={unmapped}")
+                return {
+                    "success": False,
+                    "source": "payu",
+                    "message": "PayU transaction is not successful/captured",
+                    "httpStatus": 400,
+                }
+
+            # -------- Parse received time --------
+            addedon = payu_payload.get("addedon")
+            if not addedon:
+                self.logger.error("Missing 'addedon' in PayU payload")
+                return {
+                    "success": False,
+                    "source": "payu",
+                    "message": "Missing 'addedon' in PayU payload",
+                    "httpStatus": 400,
+                }
+            try:
+                dt = datetime.strptime(addedon, "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                # Fallback for ISO-like strings
+                try:
+                    dt = datetime.fromisoformat(addedon.replace("Z", "+00:00"))
+                except Exception as e:
+                    self.logger.error(f"Invalid 'addedon' datetime format: {addedon} ({e})")
+                    return {
+                        "success": False,
+                        "source": "payu",
+                        "message": f"Invalid 'addedon' datetime format: {addedon}",
+                        "httpStatus": 400,
+                    }
+            received_time_str = self.format_datetime(dt)
+
+            # -------- Amount and currency --------
+            from decimal import Decimal, ROUND_HALF_UP
+            raw_amount = payu_payload.get("amount") or payu_payload.get("net_amount_debit")
+            if raw_amount is None:
+                self.logger.error("Missing 'amount' in PayU payload")
+                return {
+                    "success": False,
+                    "source": "payu",
+                    "message": "Missing 'amount' in PayU payload",
+                    "httpStatus": 400,
+                }
+            try:
+                amount_str = f"{Decimal(str(raw_amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)}"
+            except Exception as e:
+                self.logger.warning(f"Amount quantize failed, using raw string: {raw_amount} ({e})")
+                amount_str = str(raw_amount)
+
+            currency = (payu_payload.get("currency") or "INR").upper()
+            if len(currency) != 3:
+                self.logger.warning(f"Invalid currency '{currency}', defaulting to INR")
+                currency = "INR"
+
+            # -------- Reason --------
+            reason = (payu_payload.get("productinfo") or "").strip() or "Online payment"
+
+            # -------- Map payment method --------
+            mode = (payu_payload.get("mode") or "").upper()
+            payment_method = "other"
+            payment_method_other = None
+            if mode in ("CREDITCARD", "CC"):
+                payment_method = "creditCard"
+            elif mode in ("DEBITCARD", "DC"):
+                payment_method = "debitCard"
+            elif mode in ("NB", "NETBANKING", "BANKTRANSFER"):
+                payment_method = "bankTransfer"
+            elif mode == "PAYPAL":
+                payment_method = "paypal"
+            elif mode == "CASH":
+                payment_method = "cash"
+            elif mode in ("CHEQUE", "CHECQUE", "CHECK"):
+                payment_method = "checque"  # Bookeo enum spelling
+            elif mode in ("UPI", "GPAY", "PHONEPE", "PAYTM", "BHIM"):
+                payment_method = "other"
+                payment_method_other = "UPI"
+            else:
+                payment_method = "other"
+                payment_method_other = mode or "Other"
+
+            # -------- Comment (compact, informative) --------
+            comment_parts = [
+                f"mihpayid={payu_payload.get('mihpayid')}",
+                f"txnid={payu_payload.get('txnid')}",
+                f"bank_ref={payu_payload.get('bank_ref_num') or payu_payload.get('bank_ref_no')}",
+                f"pg={payu_payload.get('PG_TYPE')}",
+                f"mode={payu_payload.get('mode')}",
+                f"status={payu_payload.get('status')}",
+            ]
+            comment = "PayU: " + " ".join([p for p in comment_parts if p and not p.endswith("=None")])
+            # Optional: trim overly long comments to keep within API/UI limits
+            if len(comment) > 500:
+                comment = comment[:500]
+
+            payload = {
+                "receivedTime": received_time_str,
+                "reason": reason,
+                "comment": comment,
+                "amount": {"amount": amount_str, "currency": currency},
+                "paymentMethod": payment_method,
+            }
+            if payment_method == "other":
+                payload["paymentMethodOther"] = payment_method_other or "Other"
+
+            params = {"lang": lang}
+
+            self.logger.info(
+                f"Submitting payment to Bookeo for booking {booking_number}: "
+                f"amount={amount_str} {currency}, method={payment_method}"
+                + (f" ({payment_method_other})" if payment_method == "other" else "")
+            )
+
+            # -------- Submit to Bookeo --------
+            try:
+                resp = self._make_request(
+                    "POST",
+                    f"/bookings/{booking_number}/payments",
+                    params=params,
+                    data=payload,
+                )
+                self.logger.info(f"Bookeo payment recorded for booking {booking_number}")
+                return resp
+            except requests.HTTPError as e:
+                self.logger.error(f"Bookeo HTTP error while recording payment for {booking_number}: {e}")
+                return self._extract_api_error(e, source="bookeo")
+
+        except Exception as e:
+            # Catch-all for unexpected mapping/validation errors
+            self.logger.exception(f"Unexpected error while mapping PayU payload to Bookeo payment: {e}")
+            return {
+                "success": False,
+                "source": "internal",
+                "message": str(e),
+                "httpStatus": 500,
+            }
 
 
 # ==================== HELPER FUNCTIONS ====================

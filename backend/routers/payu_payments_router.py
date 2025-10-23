@@ -1,9 +1,10 @@
 from datetime import date, datetime, time
+import logging
 from fastapi import APIRouter, HTTPException, Depends, status
 from supabase_auth import Optional
 from fastapi import Request, Response
 import hashlib, os
-
+from backend.config.bookeo import BookeoAPI, BookeoManager
 
 
 from backend.config.payu_client import (
@@ -14,6 +15,10 @@ from backend.config.payu_client import (
     PaymentLinkResponse,
     PayUAPIError,
 )
+
+def get_bookeo_client() -> BookeoAPI:
+    # Optionally make this a cached singleton if desired
+    return BookeoAPI()
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -100,18 +105,19 @@ def payu_reverse_hash(p: dict, salt: str) -> str:
         base = f"{p['additionalCharges']}|{base}"
     return hashlib.sha512(base.encode("utf-8")).hexdigest()
 
+
 @router.post("/webhooks/payu")
 async def payu_webhook(request: Request) -> Response:
     form = await request.form()
     print("\n\n")
-    print("Received PayU Webhook payload:", form)
-    print("\n\n")
+    logging.info(f"Received PayU Webhook payload: {form}")
     payload = {k: (v.strip() if isinstance(v, str) else v) for k, v in form.items()}
     received = payload.get("hash", "")
+    get_bookeo_client().create_booking_payment_from_payu(payload)
+    
     if not PAYU_SALT or not received:
         return Response(content="invalid configuration or payload", status_code=status.HTTP_400_BAD_REQUEST)
     computed = payu_reverse_hash(payload, PAYU_SALT)
     if computed != received:
         return Response(content="invalid signature", status_code=status.HTTP_400_BAD_REQUEST)
-    print("PayU Webhook received valid payload:", payload)
     return Response(content="ok", status_code=status.HTTP_200_OK)
