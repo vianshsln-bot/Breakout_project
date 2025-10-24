@@ -625,8 +625,11 @@ class BookeoAPI:
             booking_hold_number = (payu_payload.get("udf1") or "").strip()
             booking_event_id = (payu_payload.get("udf2") or "").strip()
             booking_customer_id = (payu_payload.get("udf3") or "").strip()
-            booking_participants = (payu_payload.get("udf4") or "").strip()
+            booking_participants = json.loads(payu_payload.get("udf4") or "[]")
             booking_product_id = (payu_payload.get("udf5") or "").strip()
+
+
+            
             
             if not booking_hold_number:
                 self.logger.error("Missing booking number (udf1) in PayU payload")
