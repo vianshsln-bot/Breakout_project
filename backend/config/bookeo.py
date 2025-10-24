@@ -624,12 +624,12 @@ class BookeoAPI:
             # print(payu_payload,type(payu_payload),payu_payload.get("udf1") ,sep="\n",end="\n\n")
             
             booking_hold_number = (payu_payload.get("udf1") or "").strip()
-            booking_event_id = (payu_payload.get("udf2") or "").strip()
-            booking_customer_id = (payu_payload.get("udf3") or "").strip()
-            booking_participants = json.loads(payu_payload.get("udf4") or "[]")
-            booking_product_id = (payu_payload.get("udf5") or "").strip()
+            booking_customer_id = (payu_payload.get("udf2") or "").strip()
+            booking_event_id = (payu_payload.get("udf3") or "").strip()
+            booking_product_id = (payu_payload.get("udf4") or "").strip()
+            booking_participants = json.loads(payu_payload.get("udf5") or "[]")
 
-            print("Booking details from UDFs:", booking_hold_number, booking_event_id, booking_customer_id, booking_participants, booking_product_id, sep="\n", end="\n\n")
+            print("Booking details from UDFs:", booking_hold_number, booking_event_id, booking_customer_id, booking_participants, booking_product_id, sep="\n", end="\n")
 
             
             
