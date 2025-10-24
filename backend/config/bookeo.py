@@ -548,8 +548,9 @@ class BookeoAPI:
             payment_link_request.subAmount=float(hold.get("totalPayable")["amount"])
             if(payment_link_request.description==""):
                 payment_link_request.description=f"Payment for booking hold {hold_id}"
-            if(payment_link_request.invoiceNumber==""):
-                payment_link_request.invoiceNumber=f"{hold_id}"
+            # if(payment_link_request.invoiceNumber==""):
+            payment_link_request.invoiceNumber=f"{hold_id}"
+            payment_link_request.udf.booking_id=hold_id
             payment_link_request.minAmountForCustomer=float(hold.get("totalPayable")["amount"])/2
             print(payment_link_request)
             payment_link_response = payu_client.create_payment_link(payment_link_request)
