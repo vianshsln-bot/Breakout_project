@@ -254,10 +254,10 @@ class BookeoAPI:
 
     def create_booking(
         self,
-        event_id: str,
-        customer_id: str,
-        participants: Dict,
-        product_id: str,
+        product_id: str=None,
+        event_id: str=None,
+        customer_id: str=None,
+        participants: Dict=None,
         previous_hold_id: str = None,
         options: List[Dict] = None,
         initial_payments: List[Dict] = None,
@@ -268,6 +268,7 @@ class BookeoAPI:
         """
         Create a new booking.
         """
+
         booking_data = {
             "eventId": event_id,
             "customerId": customer_id,
@@ -288,7 +289,9 @@ class BookeoAPI:
 
         if previous_hold_id:
             params['previousHoldId'] = previous_hold_id
-
+        print(params)
+        print("\n\n")
+        print(booking_data)
         return self._make_request('POST', '/bookings', params=params, data=booking_data)
 
     def get_booking(self, booking_id: str, expand: bool = False, lang: str = "en-US") -> Dict:
@@ -551,7 +554,14 @@ class BookeoAPI:
                 payment_link_request.description=f"Payment for booking hold {hold_id}"
             # if(payment_link_request.invoiceNumber==""):
             payment_link_request.invoiceNumber=f"INV{uuid.uuid4().hex[:8].upper()}" 
+            
+            # Udfs
             payment_link_request.udf.booking_id=hold_id
+            payment_link_request.udf.customer_id=customer_id
+            payment_link_request.udf.event_id=event_id
+            payment_link_request.udf.product_id=product_id
+            payment_link_request.udf.participants=json.dumps(participants)
+
             payment_link_request.minAmountForCustomer=float(hold.get("totalPayable")["amount"])/2
             print(payment_link_request)
             payment_link_response = payu_client.create_payment_link(payment_link_request)
@@ -600,7 +610,7 @@ class BookeoAPI:
             "max_payments_allowed": payment_link_result.maxPaymentsAllowed,
 
             }
-    def create_booking_payment_from_payu(
+    def create_booking_after_payment_from_payu(
         self,
         payu_payload: Dict,
         lang: str = "en-US",
@@ -611,9 +621,14 @@ class BookeoAPI:
         """
         try:
             # -------- Validate booking reference --------
-            print(payu_payload,type(payu_payload),payu_payload.get("udf1") ,sep="\n",end="\n\n")
-            booking_number = (payu_payload.get("udf1") or "").strip()
-            if not booking_number:
+            # print(payu_payload,type(payu_payload),payu_payload.get("udf1") ,sep="\n",end="\n\n")
+            booking_hold_number = (payu_payload.get("udf1") or "").strip()
+            booking_event_id = (payu_payload.get("udf2") or "").strip()
+            booking_customer_id = (payu_payload.get("udf3") or "").strip()
+            booking_participants = (payu_payload.get("udf4") or "").strip()
+            booking_product_id = (payu_payload.get("udf5") or "").strip()
+            
+            if not booking_hold_number:
                 self.logger.error("Missing booking number (udf1) in PayU payload")
                 return {
                     "success": False,
@@ -732,27 +747,32 @@ class BookeoAPI:
             if payment_method == "other":
                 payload["paymentMethodOther"] = payment_method_other or "Other"
 
-            params = {"lang": lang}
 
             self.logger.info(
-                f"Submitting payment to Bookeo for booking {booking_number}: "
+                f"Submitting payment to Bookeo for booking {booking_hold_number}: "
                 f"amount={amount_str} {currency}, method={payment_method}"
                 + (f" ({payment_method_other})" if payment_method == "other" else "")
             )
 
-            # -------- Submit to Bookeo --------
+            # -------- Submit to Bookeo Finalize booking --------
             try:
-                resp = self._make_request(
-                    "POST",
-                    f"/bookings/{booking_number}/payments",
-                    params=params,
-                    data=payload,
-                )
-                self.logger.info(f"Bookeo payment recorded for booking {booking_number}")
-                return resp
-            except requests.HTTPError as e:
-                self.logger.error(f"Bookeo HTTP error while recording payment for {booking_number}: {e}")
+                self.create_booking(product_id=booking_product_id,event_id=booking_event_id, customer_id=booking_customer_id, participants=booking_participants, previous_hold_id=booking_hold_number, initial_payments=[payload])
+            except Exception as e:
+                self.logger.error(f"Bookeo error while recording payment for {booking_hold_number}: {e}")
                 return self._extract_api_error(e, source="bookeo")
+            
+            # try:
+            #     resp = self._make_request(
+            #         "POST",
+            #         f"/bookings/{booking_hold_number}/payments",
+            #         params=params,
+            #         data=payload,
+            #     )
+            #     self.logger.info(f"Bookeo payment recorded for booking {booking_hold_number}")
+            #     return resp
+            # except requests.HTTPError as e:
+            #     self.logger.error(f"Bookeo HTTP error while recording payment for {booking_hold_number}: {e}")
+            #     return self._extract_api_error(e, source="bookeo")
 
         except Exception as e:
             # Catch-all for unexpected mapping/validation errors

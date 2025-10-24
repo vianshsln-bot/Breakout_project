@@ -1,0 +1,4 @@
+import json
+dict = {"Adults":0,"Children":3}
+check=json.dumps(dict)
+print(type(check))

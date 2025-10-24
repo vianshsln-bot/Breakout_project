@@ -57,11 +57,11 @@ class PaymentItem(BaseModel):
     payment_method: str = "creditCard"
 
 class BookingCreate(BaseModel):
-    event_id: str
     product_id: str
-    customer_id:str
-    adults: int = 1
-    children: int = 0
+    event_id: str
+    adults: int
+    children: int
+    customer_id: str
     previous_hold_id: Optional[str] = None
     initial_payments: Optional[List[PaymentItem]] = None
     notify_users: bool = True
@@ -215,8 +215,8 @@ def create_booking(payload: BookingCreate, bookeo: BookeoAPI = Depends(get_booke
             ]
         return bookeo.create_booking(
             event_id=payload.event_id,
-            customer_id=payload.customer_id,
             participants=participants,
+            customer_id=payload.customer_id,
             product_id=payload.product_id,
             previous_hold_id=payload.previous_hold_id,
             initial_payments=initial_payments,
