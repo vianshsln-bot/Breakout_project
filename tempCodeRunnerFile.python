@@ -1,4 +1,11 @@
-import json
-dict = {"Adults":0,"Children":3}
-check=json.dumps(dict)
-print(type(check))
+def crea(list):
+    list.append(1)
+    # print(list)
+    list = [2,3]
+    list.append(4)
+    print(list)
+
+
+list = [9,8,7]
+crea(list)
+print(list)
