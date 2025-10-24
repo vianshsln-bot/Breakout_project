@@ -50,9 +50,9 @@ class UDFInfo(BaseModel):
     """User-defined fields for payment link."""
     booking_id: Optional[str] = None
     customer_id: Optional[str] = None
-    udf3: Optional[str] = None
-    udf4: Optional[str] = None
-    udf5: Optional[str] = None
+    event_id: Optional[str] = None
+    product_id: Optional[str] = None
+    participants: Optional[str] = None
 
 
 class PaymentLinkRequest(BaseModel):
@@ -441,9 +441,9 @@ class PayUManager:
             "udf": {
                 "udf1": request.udf.booking_id,
                 "udf2": request.udf.customer_id,
-                "udf3": request.udf.udf3,
-                "udf4": request.udf.udf4,
-                "udf5": request.udf.udf5,
+                "udf3": request.udf.event_id,
+                "udf4": request.udf.product_id,
+                "udf5": request.udf.participants,
             },
             "viaEmail": request.viaEmail,
             "viaSms": request.viaSms,

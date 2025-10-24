@@ -113,8 +113,9 @@ async def payu_webhook(request: Request) -> Response:
     logging.info(f"Received PayU Webhook payload: {form}")
     payload = {k: (v.strip() if isinstance(v, str) else v) for k, v in form.items()}
     received = payload.get("hash", "")
-    get_bookeo_client().create_booking_payment_from_payu(payload)
+    get_bookeo_client().create_booking_after_payment_from_payu(payload)
     
+
     if not PAYU_SALT or not received:
         return Response(content="invalid configuration or payload", status_code=status.HTTP_400_BAD_REQUEST)
     computed = payu_reverse_hash(payload, PAYU_SALT)
