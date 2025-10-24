@@ -113,6 +113,7 @@ async def payu_webhook(request: Request) -> Response:
     logging.info(f"Received PayU Webhook payload: {form}")
     payload = {k: (v.strip() if isinstance(v, str) else v) for k, v in form.items()}
     received = payload.get("hash", "")
+    print("Payload received:", payload)
     get_bookeo_client().create_booking_after_payment_from_payu(payload)
     
 
