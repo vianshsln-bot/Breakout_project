@@ -6,8 +6,8 @@ from datetime import timedelta, datetime, timezone, date
 from supabase_client import supabase
 from collections import defaultdict
 
-#router = APIRouter(prefix="/kpis", tags=["KPIs"])
-app = FastAPI(title="Breakout Dashboard API", version="1.0")
+router = APIRouter(prefix="/kpis", tags=["KPIs"])
+
 
 # ------------------------------------------------------------
 # ✅ GLOBAL TIME FILTER HANDLING
@@ -82,7 +82,7 @@ def get_global_time_filter(
 # ------------------------------------------------------------
 # ✅ BOOKING KPIS
 # ------------------------------------------------------------
-@app.get("/bookings", response_model=List[Dict[str, Any]])
+@router.get("/bookings", response_model=List[Dict[str, Any]])
 async def get_booking_kpis(
     date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter),
     interval: str = Query("full", description="full, daily, weekly, monthly, quarterly, half_yearly, yearly")
@@ -123,7 +123,7 @@ async def get_booking_kpis(
 # ------------------------------------------------------------
 # ✅ CUSTOMER KPIS
 # ------------------------------------------------------------
-@app.get("/customers", response_model=List[Dict[str, Any]])
+@router.get("/customers", response_model=List[Dict[str, Any]])
 async def get_customer_kpis(date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter)):
     """Customer KPIs"""
     start_time, end_time = date_range
@@ -153,7 +153,7 @@ async def get_customer_kpis(date_range: Tuple[datetime, datetime] = Depends(get_
 # ------------------------------------------------------------
 # ✅ LEAD KPIS
 # ------------------------------------------------------------
-@app.get("/leads", response_model=List[Dict[str, Any]])
+@router.get("/leads", response_model=List[Dict[str, Any]])
 async def get_lead_kpis(date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter)):
     """Lead KPIs"""
     try:
@@ -178,7 +178,7 @@ async def get_lead_kpis(date_range: Tuple[datetime, datetime] = Depends(get_glob
 # ------------------------------------------------------------
 # ✅ PAYMENT KPIS
 # ------------------------------------------------------------
-@app.get("/payments", response_model=List[Dict[str, Any]])
+@router.get("/payments", response_model=List[Dict[str, Any]])
 async def get_payment_kpis(date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter)):
     """Payment KPIs"""
     start_time, end_time = date_range
@@ -206,7 +206,7 @@ async def get_payment_kpis(date_range: Tuple[datetime, datetime] = Depends(get_g
 # ------------------------------------------------------------
 # ✅ AI-RELATED KPI ENDPOINT (FILTER-AWARE)
 # ------------------------------------------------------------
-@app.get("/llmkpi")
+@router.get("/llmkpi")
 def get_analysis_llmkpis(
     date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter)
 ):
@@ -284,7 +284,7 @@ def get_analysis_llmkpis(
 # ------------------------------------------------------------
 # ✅ CHART DATA ENDPOINT (FILTER-AWARE)
 # ------------------------------------------------------------
-@app.get("/charts")
+@router.get("/charts")
 def get_analysis_charts(
     date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter)
 ):
