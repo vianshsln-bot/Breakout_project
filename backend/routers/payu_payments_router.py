@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 import logging
 from fastapi import APIRouter, HTTPException, Depends, status
-from supabase_auth import Optional
+from typing import Optional
 from fastapi import Request, Response
 import hashlib, os
 from backend.config.bookeo import BookeoAPI

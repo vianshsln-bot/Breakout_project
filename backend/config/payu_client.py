@@ -609,9 +609,9 @@ if __name__ == "__main__":
             description="Booking Payment for Event XYZ",
             minAmountForCustomer=500.00,
             customer=CustomerInfo(
-                name="Jane Smith",
-                email="vianshsln@gmail.com",
-                phone="9650848213"
+                name="Payment Due",
+                email="naman21266@iiitd.ac.in",
+                phone="9868252552"
             ),
             udf=UDFInfo(
                 booking_id="BOOK789",

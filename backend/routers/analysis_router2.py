@@ -3,7 +3,7 @@ import enum
 from fastapi import FastAPI, APIRouter, HTTPException, Query, status, Depends
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import timedelta, datetime, timezone, date
-from supabase_client import supabase
+from backend.config.supabase_client import supabase
 from collections import defaultdict
 
 router = APIRouter(prefix="/kpis", tags=["KPIs"])

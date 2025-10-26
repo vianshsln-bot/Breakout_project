@@ -6,7 +6,7 @@ from backend.models.followup_model import FollowUp
 from backend.routers import branch_router, call_analysis_router, \
 call_router, consumption_router, customer_router, employee_router,\
 booking_router, event_router, followup_router, lead_router, linktracker_router,\
-payment_router, payu_payments_router, scripts_router, slot_router, theme_router, compute_router,bookeo_router,analysis_router
+payment_router, payu_payments_router, scripts_router, slot_router, theme_router, compute_router,bookeo_router,analysis_router, analysis_router2
 
 
 # ----------------- App Initialization -----------------
