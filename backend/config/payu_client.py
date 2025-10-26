@@ -72,7 +72,7 @@ class PaymentLinkRequest(BaseModel):
     customer: CustomerInfo
     udf: UDFInfo = Field(default_factory=UDFInfo)
     viaEmail: bool = Field(default=True)
-    viaSms: bool = Field(default=False)
+    viaSms: bool = Field(default=True)
     notes: str = Field(default="")
     isActive: bool = Field(default=True)
     isAmountFilledByCustomer: bool = Field(default=False)
@@ -500,7 +500,7 @@ class PayUManager:
                     f"(Error Code: {data.get('errorCode')})"
                 )
             payu_response = PaymentLinkResponse(**data)
-            # print(f"✓ Payment link created successfully: {data}")  
+            print(f"✓ Payment link created successfully: {data}")  
             # Check for success
             if payu_response.status != 0:
                 raise PayUAPIError(
@@ -610,14 +610,14 @@ if __name__ == "__main__":
             customer=CustomerInfo(
                 name="Jane Smith",
                 email="vianshsln@gmail.com",
-                phone="9123456789"
+                phone="9650848213"
             ),
             udf=UDFInfo(
                 booking_id="BOOK789",
                 customer_id="CUST012"
             ),
             viaEmail=True,
-            viaSms=False
+            viaSms=True
         )
         
         print(detailed_request.invoiceNumber)
