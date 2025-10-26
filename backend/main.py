@@ -66,7 +66,7 @@ app.include_router(scripts_router.router)
 app.include_router(slot_router.router)
 app.include_router(theme_router.router)
 app.include_router(compute_router.router)
-app.include_router(analysis_router.router)
+app.include_router(analysis_router2.router)
 # Add other routers here as you create them...
 # e.g., app.include_router(customer_router.router)
 
