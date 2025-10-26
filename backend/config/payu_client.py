@@ -33,7 +33,7 @@ class PayUAPIError(Exception):
 class CustomerInfo(BaseModel):
     """Customer information for payment link."""
     name: str = Field(..., min_length=1, max_length=100)
-    email: EmailStr
+    email: str 
     phone: str = Field(..., min_length=10, max_length=15)
 
 
@@ -71,8 +71,8 @@ class PaymentLinkRequest(BaseModel):
     maxPaymentsAllowed: int = Field(default=1, ge=1)
     customer: CustomerInfo
     udf: UDFInfo = Field(default_factory=UDFInfo)
-    viaEmail: bool = Field(default=True)
-    viaSms: bool = Field(default=True)
+    viaEmail: bool = True
+    viaSms: bool = True
     notes: str = Field(default="")
     isActive: bool = Field(default=True)
     isAmountFilledByCustomer: bool = Field(default=False)
@@ -478,6 +478,7 @@ class PayUManager:
             payload = self._build_payment_payload(request)
             payload_json = json.dumps(payload)
             print("Creating payment link for customer:", request.customer.email)
+            print(payload_json)
             # Prepare headers
             headers = {
                 'merchantId': self.merchant_id,
@@ -600,12 +601,12 @@ if __name__ == "__main__":
         print("--- Creating Detailed Payment Link ---")
         detailed_request = PaymentLinkRequest(
             invoiceNumber=f"INV{uuid.uuid4().hex[:8].upper()}",
-            subAmount=1000.00,
+            subAmount=7540.00,
             tax=180.00,
             shippingCharge=50.00,
             discount=100.00,
-            adjustment=1.00,
-            description="Premium service booking",
+            adjustment=1000.00,
+            description="Booking Payment for Event XYZ",
             minAmountForCustomer=500.00,
             customer=CustomerInfo(
                 name="Jane Smith",
@@ -615,28 +616,28 @@ if __name__ == "__main__":
             udf=UDFInfo(
                 booking_id="BOOK789",
                 customer_id="CUST012"
-            ),
-            viaEmail=True,
-            viaSms=True
+            )
         )
         
-        print(detailed_request.invoiceNumber)
+        # print(detailed_request.invoiceNumber)
+        print(detailed_request)
         detailed_response = manager.create_payment_link(detailed_request)
-        print(detailed_response)
-        print(f"✓ Payment Link: {detailed_response.result.paymentLink}")
-        print(f"  Total: ₹{detailed_response.result.totalAmount}")
-        print(f"  Due: ₹{detailed_response.result.dueAmount}")
-        print(f"  Email Status: {detailed_response.result.emailStatus}\n")
+        # print(detailed_response)
+        # print(f"✓ Payment Link: {detailed_response.result.paymentLink}")
+        # print(f"  Total: ₹{detailed_response.result.totalAmount}")
+        # print(f"  Due: ₹{detailed_response.result.dueAmount}")
+        # print(f"  Email Status: {detailed_response.result.emailStatus}\n")
+        # print(f"  SMS Status: {detailed_response.result.smsStatus}\n")
 
-        # check transaction details
-        print("--- Checking Transaction Details ---")
-        invoice_id = "INV6246471055"
-        date_from = datetime.now() - timedelta(days=2)
-        date_to = datetime.now()
-        print(date_from,date_to)
-        txn_page = manager.get_transaction_details(invoice_id, date_from, date_to)
-        print(txn_page.data)
-        print(f"✓ Found {txn_page.rows} transactions for Invoice ID {invoice_id}")
+        # # check transaction details
+        # print("--- Checking Transaction Details ---")
+        # invoice_id = "INV6246471055"
+        # date_from = datetime.now() - timedelta(days=2)
+        # date_to = datetime.now()
+        # print(date_from,date_to)
+        # txn_page = manager.get_transaction_details(invoice_id, date_from, date_to)
+        # print(txn_page.data)
+        # print(f"✓ Found {txn_page.rows} transactions for Invoice ID {invoice_id}")
         
     except PayUAPIError as e:
         print(f"✗ PayU Error: {e}")

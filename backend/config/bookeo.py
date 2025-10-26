@@ -6,7 +6,10 @@ from typing import Dict, List, Optional, Union
 import logging
 import time
 import os
-from backend.config.payu_client import get_payu_client, PaymentLinkRequest
+from backend.config.
+
+
+payu_client import get_payu_client, PaymentLinkRequest
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'keys.env'))
 
@@ -509,13 +512,13 @@ class BookeoAPI:
         Returns a normalized success/error payload suitable for router responses.
         """
         if payment_link_request is None:
-            return {
+            return {    
                 "success": False,
                 "source": "payu",
                 "message": "Missing payment_link_request",
                 "httpStatus": 400,
             }
-
+        print(payment_link_request)
         # 1) Create hold in Bookeo
         try:
             hold = self.create_booking_hold(
@@ -853,3 +856,153 @@ def create_payment_data(
         },
         "paymentMethod": payment_method
     }
+
+
+if __name__ == "__main__":
+    """
+    End-to-end test:
+      1) Discover a product and an event (slot) for next 7 days
+      2) Ensure a customer (create if not found)
+      3) Create participants
+      4) Create a hold in Bookeo
+      5) Create a PayU payment link (email+sms enabled)
+    """
+    import traceback
+    from payu_client import CustomerInfo
+
+    # Basic test inputs (adjust as needed)
+    TEST_FIRST_NAME = "Vianshu"
+    TEST_LAST_NAME = "Shalyan"
+    TEST_EMAIL = "vianshsln@gmail.com"
+    TEST_PHONE = "9650848213"
+
+    # Instantiate Bookeo client (env must have BOOKEO_API_KEY, BOOKEO_SECRET_KEY)
+    api = BookeoAPI()
+
+    # try:
+    print("=== Step 1: Discover a product ===")
+    products = api.get_products()
+    # Try common shapes
+    product_list = []
+    if isinstance(products, dict):
+        # Some APIs return under "data" or at top-level "products"
+        product_list = products.get("data") or products.get("products") or []
+    elif isinstance(products, list):
+        product_list = products
+    if not product_list:
+        raise RuntimeError(f"No products found; response shape={type(products)}")
+    # Heuristic to pick first product id
+    def extract_product_id(p):
+        return p.get("id") or p.get("productId") or p.get("code") or p.get("key")
+    product_id = None
+    for p in product_list:
+        pid = extract_product_id(p) if isinstance(p, dict) else None
+        if pid:
+            product_id = pid
+            break
+    if not product_id:
+        raise RuntimeError("Could not extract product id from products response")
+    print(f"Chosen product_id={product_id}")
+
+    print("\n=== Step 2: Discover an event (slot) in next 7 days ===")
+    start = datetime.now()
+    end = start + timedelta(days=7)
+    slots = api.get_available_slots(
+        start_time=api.format_datetime(start),
+        end_time=api.format_datetime(end),
+        product_id=product_id,
+    )
+    # Try to extract first slot's event id
+    slot_items = []
+    if isinstance(slots, dict):
+        # Common shapes: {"slots": [...]}, {"data": [...]}
+        slot_items = slots.get("slots") or slots.get("data") or []
+    elif isinstance(slots, list):
+        slot_items = slots
+    if not slot_items:
+        raise RuntimeError(f"No slots found for product {product_id}; response shape={type(slots)}")
+    def extract_event_id(slot):
+        # Handle various shapes: eventId, event.id, or id
+        if not isinstance(slot, dict):
+            return None
+        return (
+            slot.get("eventId")
+            or (slot.get("event") or {}).get("id")
+            or slot.get("id")
+        )
+    event_id = None
+    for s in slot_items:
+        eid = extract_event_id(s)
+        if eid:
+            event_id = eid
+            break
+    if not event_id:
+        raise RuntimeError("Could not extract event id from availability")
+    print(f"Chosen event_id={event_id}")
+    print("\n=== Step 3: Ensure a customer ===")
+    # Try to find existing customer by email; fall back to create
+    # cust_search = api.get_customers(query=TEST_EMAIL)
+    cust_id = "4256137EUML19A1C09D5A6"
+    # if isinstance(cust_search, dict):
+    #     # Common shapes: {"data": [...]}
+    #     candidates = cust_search.get("data") or []
+    #     for c in candidates:
+    #         # Typical fields: id, emailAddress
+    #         if isinstance(c, dict) and (c.get("emailAddress") == TEST_EMAIL or c.get("email") == TEST_EMAIL):
+    #             cust_id = c.get("id") or c.get("customerId")
+    #             if cust_id:
+    #                 break
+    
+    # if not cust_id:
+    #     print("Customer not found, creating...")
+    #     new_cust_payload = create_customer_data(TEST_FIRST_NAME, TEST_LAST_NAME, TEST_EMAIL, TEST_PHONE)
+    #     created = api.create_customer(new_cust_payload)
+    #     if not isinstance(created, dict):
+    #         raise RuntimeError(f"Unexpected create_customer response: {type(created)}")
+    #     cust_id = created.get("id") or created.get("customerId")
+    #     if not cust_id:
+    #         raise RuntimeError(f"Could not extract customer id from create response: {created}")
+    print(f"Created customer_id={cust_id}")
+    # else:
+    #     print(f"Found existing customer_id={cust_id}")
+    print("\n=== Step 4: Build participants ===")
+    participants = create_participants_data(adults=3, children=0)
+    print(f"Participants payload: {participants}")
+    print("\n=== Step 5: Build PayU PaymentLinkRequest ===")
+    # Set tax/shipping/discount/adjustment to 0 so totalAmount == subAmount after Bookeo hold overwrites subAmount
+    pl_request = PaymentLinkRequest(
+        invoiceNumber=f"INV{uuid.uuid4().hex[:8].upper()}",
+        description="Booking Payment for Event",
+        subAmount=5.0,  # placeholder; will be overwritten from hold.totalPayable.amount
+        tax=1.0,
+        shippingCharge=1.0,
+        discount=1.0,
+        adjustment=1.0,
+            minAmountForCustomer=1.0,  # will be set to 50% of hold by Bookeo wrapper
+            customer=CustomerInfo(
+                name=f"{TEST_FIRST_NAME} {TEST_LAST_NAME}",
+                email=TEST_EMAIL,
+                phone=TEST_PHONE,
+        )
+    )
+    
+    print(pl_request)
+
+    print("\n=== Step 6: Create hold and payment link ===")
+    result = api.create_booking_hold_and_payment_link(
+        event_id=event_id,
+        customer_id=cust_id,
+        participants=participants,
+        product_id=product_id,
+        payment_link_request=pl_request,
+    )
+    print("\n--- RESULT ---")
+    print(json.dumps(result, indent=2, default=str))
+    if result.get("success"):
+        print(f"\nPayment Link: {result.get('payment_link')}")
+        print(f"Invoice: {result.get('invoice_id')}")
+        print(f"Expires: {result.get('expiry_date')}")
+    else:
+        print("\nFlow failed.")
+
+
