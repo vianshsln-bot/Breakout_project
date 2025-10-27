@@ -8,22 +8,20 @@ from collections import defaultdict
 
 router = APIRouter(prefix="/kpis", tags=["KPIs"])
 
-
 # ------------------------------------------------------------
 # ✅ GLOBAL TIME FILTER HANDLING
 # ------------------------------------------------------------
 class TimePeriod(str, enum.Enum):
-    daily = "daily"
-    weekly = "weekly"
-    monthly = "monthly"
-    quarterly = "quarterly"
-    half_yearly = "half_yearly"
-    yearly = "yearly"
+    today = "today"
+    last_week = "last_week"
+    last_month = "last_month"
+    all_time = "all_time"
+
 
 
 # Global state to persist currently applied filter
 GLOBAL_TIME_FILTER = {
-    "period": TimePeriod.monthly,
+    "period": TimePeriod.all_time,
     "start_date": None,
     "end_date": None
 }
@@ -47,34 +45,35 @@ def compute_date_range(
         s = datetime.strptime(start_date, "%Y-%m-%d").date()
         e = datetime.strptime(end_date, "%Y-%m-%d").date()
         GLOBAL_TIME_FILTER.update({"period": None, "start_date": s, "end_date": e})
-        return s, e
+        return s, e #s.isoformat(), e.isoformat()
 
-    selected_filter = filter or GLOBAL_TIME_FILTER.get("period", TimePeriod.monthly)
+    selected_filter = filter or GLOBAL_TIME_FILTER.get("period", TimePeriod.all_time)
 
-    if selected_filter == TimePeriod.daily:
+    if selected_filter == TimePeriod.today:
         start, end = today, today
-    elif selected_filter == TimePeriod.weekly:
+    elif selected_filter == TimePeriod.last_week:
         start, end = today - timedelta(days=7), today
-    elif selected_filter == TimePeriod.monthly:
+    elif selected_filter == TimePeriod.last_month:
         start, end = today.replace(day=1), today
-    elif selected_filter == TimePeriod.quarterly:
-        start, end = today - timedelta(days=90), today
-    elif selected_filter == TimePeriod.half_yearly:
-        start, end = today - timedelta(days=180), today
-    elif selected_filter == TimePeriod.yearly:
-        start, end = today.replace(month=1, day=1), today
+    elif filter == TimePeriod.all_time:
+        return None, None  # no filtering applied
+    elif start and end:
+        try:
+            return datetime.fromisoformat(start_date).date(), datetime.fromisoformat(end_date).date()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
     else:
-        start, end = today.replace(day=1), today
+        return None, None
 
     GLOBAL_TIME_FILTER.update({"period": selected_filter, "start_date": start, "end_date": end})
-    return start, end
+    return start.isoformat(), end.isoformat()
 
 
 def get_global_time_filter(
     filter: Optional[TimePeriod] = Query(None, description="Time period filter"),
     start_date: Optional[str] = Query(None, description="Custom range start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="Custom range end date (YYYY-MM-DD)")
-) -> Tuple[datetime, datetime]:
+) -> Tuple[Optional[str], Optional[str]]:
     """Dependency to inject the global date range into all endpoints."""
     return compute_date_range(filter, start_date, end_date)
 
@@ -85,7 +84,7 @@ def get_global_time_filter(
 @router.get("/bookings", response_model=List[Dict[str, Any]])
 async def get_booking_kpis(
     date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter),
-    interval: str = Query("full", description="full, daily, weekly, monthly, quarterly, half_yearly, yearly")
+    interval: str = Query("full", description="Today, Last week,Last Month, All Time")
 ):
     """Booking KPIs"""
     start_time, end_time = date_range
@@ -129,10 +128,11 @@ async def get_customer_kpis(date_range: Tuple[datetime, datetime] = Depends(get_
     start_time, end_time = date_range
 
     try:
+        period = GLOBAL_TIME_FILTER.get("period", "all_time")
         params = {
-            "start_time": start_time,
-            "end_time": end_time,
+            "time_period": period.value if hasattr(period, "value") else str(period)
         }
+
         response = supabase.rpc('get_all_customer_kpis', params).execute()
 
         if not response.data:
@@ -183,7 +183,11 @@ async def get_payment_kpis(date_range: Tuple[datetime, datetime] = Depends(get_g
     """Payment KPIs"""
     start_time, end_time = date_range
     try:
-        params = {'start_time': start_time, 'end_time': end_time}
+        period = GLOBAL_TIME_FILTER.get("period", "all_time")
+        params = {
+            "time_period": period.value if hasattr(period, "value") else str(period)
+        }
+
         response = supabase.rpc('get_all_payment_kpis', params).execute()
 
         if not response.data:
@@ -210,31 +214,22 @@ async def get_payment_kpis(date_range: Tuple[datetime, datetime] = Depends(get_g
 def get_analysis_llmkpis(
     date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter)
 ):
-    """
-    Returns AI-related call analysis KPIs (filtered by global time range).
-    """
+    """Returns AI-related call analysis KPIs (filtered by global time range)."""
     start_time, end_time = date_range
 
     try:
-        # Fetch data within date range
-        call_resp = (
-            supabase.table("call")
-            .select("conv_id, date_time")
-            .gte("date_time", start_time.isoformat())
-            .lte("date_time", end_time.isoformat())
-            .execute()
-        )
+        query = supabase.table("call").select("conv_id, date_time")
+
+        if start_time and end_time:
+            query = query.gte("date_time", start_time).lte("date_time", end_time)
+
+        call_resp = query.execute()
         conv_ids = [r["conv_id"] for r in call_resp.data or []]
 
         if not conv_ids:
             return {"llmkpi": [], "message": "No calls found in selected time range."}
 
-        response = (
-            supabase.table("call_analysis")
-            .select("*")
-            .in_("conv_id", conv_ids)
-            .execute()
-        )
+        response = supabase.table("call_analysis").select("*").in_("conv_id", conv_ids).execute()
         records = response.data or []
 
         if not records:
@@ -244,35 +239,13 @@ def get_analysis_llmkpis(
         ai_calls = sum(1 for r in records if r.get("ai_detect_flag"))
         human_calls = sum(1 for r in records if r.get("human_agent_flag"))
         out_of_scope_calls = sum(1 for r in records if r.get("out_of_scope"))
-        ai_success_calls = sum(
-            1 for r in records if r.get("ai_detect_flag") and not r.get("failed_conversion_reason")
-        )
+        ai_success_calls = sum(1 for r in records if r.get("ai_detect_flag") and not r.get("failed_conversion_reason"))
 
         llmkpi = [
-            {
-                "name": "AI Detection Rate",
-                "value": round((ai_calls / total_calls) * 100, 2) if total_calls else 0,
-                "description": "% of calls detected or handled by AI",
-                "output_format": "percentage (0–100%)"
-            },
-            {
-                "name": "Human Agent Involvement Rate",
-                "value": round((human_calls / total_calls) * 100, 2) if total_calls else 0,
-                "description": "% of calls where human agent was required",
-                "output_format": "percentage (0–100%)"
-            },
-            {
-                "name": "Out-of-Scope Rate",
-                "value": round((out_of_scope_calls / total_calls) * 100, 2) if total_calls else 0,
-                "description": "Share of calls where query was irrelevant or unanswerable",
-                "output_format": "percentage (0–100%)"
-            },
-            {
-                "name": "AI Success Rate",
-                "value": round((ai_success_calls / ai_calls) * 100, 2) if ai_calls else 0,
-                "description": "Effectiveness of AI in resolving calls",
-                "output_format": "percentage (0–100%)"
-            }
+            {"name": "AI Detection Rate", "value": round((ai_calls / total_calls) * 100, 2) if total_calls else 0},
+            {"name": "Human Agent Involvement Rate", "value": round((human_calls / total_calls) * 100, 2) if total_calls else 0},
+            {"name": "Out-of-Scope Rate", "value": round((out_of_scope_calls / total_calls) * 100, 2) if total_calls else 0},
+            {"name": "AI Success Rate", "value": round((ai_success_calls / ai_calls) * 100, 2) if ai_calls else 0},
         ]
 
         return {"llmkpi": llmkpi}
@@ -288,60 +261,41 @@ def get_analysis_llmkpis(
 def get_analysis_charts(
     date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter)
 ):
-    """
-    Returns key chart datasets for visual analytics by joining call and call_analysis on conv_id.
-    """
+    """Returns key chart datasets for visual analytics."""
     start_time, end_time = date_range
 
     try:
-        # ✅ Step 1: Fetch filtered call data
-        call_response = (
-            supabase.table("call")
-            .select("conv_id, date_time")
-            .gte("date_time", start_time.isoformat())
-            .lte("date_time", end_time.isoformat())
-            .execute()
-        )
+        query = supabase.table("call").select("conv_id, date_time")
+        if start_time and end_time:
+            query = query.gte("date_time", start_time).lte("date_time", end_time)
+
+        call_response = query.execute()
         call_data = call_response.data or []
         conv_ids = [r["conv_id"] for r in call_data]
 
-        # ✅ Step 2: Fetch only analysis records for those conv_ids
-        analysis_response = (
-            supabase.table("call_analysis")
-            .select("*")
-            .in_("conv_id", conv_ids)
-            .execute()
-        )
+        if not conv_ids:
+            return {"charts": [], "message": "No calls found in selected range."}
+
+        analysis_response = supabase.table("call_analysis").select("*").in_("conv_id", conv_ids).execute()
         analysis_data = analysis_response.data or []
 
         if not call_data or not analysis_data:
-            return {"charts": [], "message": "No data available in one or both tables for this range."}
+            return {"charts": [], "message": "No data available for this range."}
 
-        # ✅ Step 3: Merge both datasets
         call_date_map = {row["conv_id"]: row.get("date_time") for row in call_data if row.get("date_time")}
         analysis_records = [
-            {**row, "date_time": call_date_map[row["conv_id"]]}
-            for row in analysis_data if row.get("conv_id") in call_date_map
+            {**row, "date_time": call_date_map[row["conv_id"]]} for row in analysis_data if row.get("conv_id") in call_date_map
         ]
 
-        if not analysis_records:
-            return {"charts": [], "message": "No matching conversation IDs between tables."}
-
-        # ✅ Chart 1: Analysis Volume Over Time
+        # Chart 1
         volume_by_date = defaultdict(int)
         for r in analysis_records:
             if r.get("date_time"):
-                date_str = r["date_time"].split("T")[0]
-                volume_by_date[date_str] += 1
+                volume_by_date[r["date_time"].split("T")[0]] += 1
 
-        chart1 = {
-            "title": "Analysis Volume Over Time",
-            "x_axis": list(volume_by_date.keys()),
-            "y_axis": list(volume_by_date.values()),
-            "chart_type": "line"
-        }
+        chart1 = {"title": "Analysis Volume Over Time", "x_axis": list(volume_by_date.keys()), "y_axis": list(volume_by_date.values()), "chart_type": "line"}
 
-        # ✅ Chart 2: Average Sentiment by Failed Conversion Reason
+        # Chart 2
         sentiment_by_reason = defaultdict(list)
         for r in analysis_records:
             reason = r.get("failed_conversion_reason")
@@ -351,20 +305,10 @@ def get_analysis_charts(
                 except (TypeError, ValueError):
                     continue
 
-        avg_sentiment = {
-            reason: round(sum(vals) / len(vals), 3)
-            for reason, vals in sentiment_by_reason.items() if vals
-        }
+        avg_sentiment = {reason: round(sum(vals) / len(vals), 3) for reason, vals in sentiment_by_reason.items() if vals}
+        chart2 = {"title": "Average Sentiment by Failed Conversion Reason", "x_axis": list(avg_sentiment.keys()), "y_axis": list(avg_sentiment.values()), "chart_type": "bar"}
 
-        chart2 = {
-            "title": "Average Sentiment by Failed Conversion Reason",
-            "x_axis": list(avg_sentiment.keys()),
-            "y_axis": list(avg_sentiment.values()),
-            "chart_type": "bar"
-        }
-
-
-	# ✅ Chart 3: AI Detection Trend Over Time
+        # Chart 3
         ai_by_week = defaultdict(lambda: {"ai": 0, "total": 0})
         for r in analysis_records:
             if r.get("date_time"):
@@ -373,22 +317,10 @@ def get_analysis_charts(
                 ai_by_week[week_start]["total"] += 1
                 if r.get("ai_detect_flag"):
                     ai_by_week[week_start]["ai"] += 1
-            			
 
+        ai_trend = {week: round((vals["ai"] / vals["total"]) * 100, 2) for week, vals in ai_by_week.items() if vals["total"] > 0}
+        chart3 = {"title": "AI Detection Trend Over Time", "x_axis": list(ai_trend.keys()), "y_axis": list(ai_trend.values()), "chart_type": "line"}
 
-        ai_trend = {
-            week: round((vals["ai"] / vals["total"]) * 100, 2)
-            for week, vals in ai_by_week.items() if vals["total"] > 0
-        }
-
-        chart3 = {
-            "title": "AI Detection Trend Over Time",
-            "x_axis": list(ai_trend.keys()),
-            "y_axis": list(ai_trend.values()),
-            "chart_type": "line"
-        }
-
-        # ✅ Final Response
         return {"charts": [chart1, chart2, chart3]}
 
     except Exception as e:
