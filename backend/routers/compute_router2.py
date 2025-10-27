@@ -21,6 +21,8 @@ def get_date_range(filter: Optional[str], start_date: Optional[str], end_date: O
         return today - timedelta(days=7), today
     elif filter == "last_month":
         return today - timedelta(days=30), today
+    elif filter == "all_time":
+        return None, None  # no filtering applied
     elif start_date and end_date:
         try:
             return datetime.fromisoformat(start_date).date(), datetime.fromisoformat(end_date).date()
@@ -32,7 +34,7 @@ def get_date_range(filter: Optional[str], start_date: Optional[str], end_date: O
 
 @router.get("/kpis")
 def compute_kpis(
-    filter: Optional[str] = Query(None, description="Filter by: today, last_week, last_month"),
+    filter: Optional[str] = Query(None, description="Filter by: today, last_week, last_month, all_time"),
     start_date: Optional[str] = Query(None, description="Custom start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="Custom end date (YYYY-MM-DD)")
 ):
@@ -51,7 +53,7 @@ def compute_kpis(
         calls_query = supabase.table("call").select("*")
         bookings_query = supabase.table("bookings").select("*")
 
-        # Step 3️⃣ Apply date filters to call and bookings
+        # Step 3️⃣ Apply date filters to call and bookings (if applicable)
         if start and end:
             calls_query = calls_query.gte("date_time", str(start)).lte("date_time", str(end))
             bookings_query = bookings_query.gte("creation_time", str(start)).lte("creation_time", str(end))
@@ -138,8 +140,8 @@ def compute_kpis(
             "customer_satisfaction_avg_rating": avg_rating,
             "date_filter_applied": {
                 "filter": filter,
-                "start_date": str(start),
-                "end_date": str(end)
+                "start_date": str(start) if start else None,
+                "end_date": str(end) if end else None
             },
         }
 
