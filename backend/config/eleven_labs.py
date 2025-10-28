@@ -470,6 +470,18 @@ class ElevenLabsClient:
         except Exception as e:
             self._handle_error(e, f"deleting knowledge base document {document_id}")
 
+    def compute_rag_index(self,document_id: int,model: str):
+        try :
+            # print("this is it")
+            response = self.client.conversational_ai.knowledge_base.document.compute_rag_index(
+                documentation_id=document_id,
+                model=model
+            )
+            
+            return response.model_dump() if hasattr(response, 'model_dump') else response
+        except Exception as e:
+            self._handle_error(e,f"Compute Rag Index Error :" ,e)
+    
     # ================== PHONE NUMBERS ==================
 
     def list_phone_numbers(
@@ -851,162 +863,164 @@ if __name__ == "__main__":
     - Have at least one agent in your workspace
     
     Run with: python eleven_labs.py
-    """
     
-    print("=" * 80)
-    print("ElevenLabs SDK Wrapper - Comprehensive Test Suite")
-    print("=" * 80)
+    # """
+    # client = ElevenLabsClient()
+    # client.test()
+    # print("=" * 80)
+    # print("ElevenLabs SDK Wrapper - Comprehensive Test Suite")
+    # print("=" * 80)
     
-    try:
-        # Initialize client
-        print("\n[1] Initializing client...")
-        client = ElevenLabsClient()
-        print("✓ Client initialized successfully")
+    # try:
+    #     # Initialize client
+    #     print("\n[1] Initializing client...")
+    #     client = ElevenLabsClient()
+    #     print("✓ Client initialized successfully")
         
-        # ========== WORKSPACE ==========
-        print("\n" + "=" * 80)
-        print("WORKSPACE SETTINGS")
-        print("=" * 80)
+    #     # ========== WORKSPACE ==========
+    #     print("\n" + "=" * 80)
+    #     print("WORKSPACE SETTINGS")
+    #     print("=" * 80)
         
-        print("\n[2] Getting workspace settings...")
-        try:
-            workspace_settings = client.get_workspace_settings()
-            print(f"✓ Workspace settings retrieved")
-            print(f"   Keys: {list(workspace_settings.keys())[:5]}...")
-        except ElevenLabsError as e:
-            print(f"⚠ Workspace settings: {e}")
+    #     print("\n[2] Getting workspace settings...")
+    #     try:
+    #         workspace_settings = client.get_workspace_settings()
+    #         print(f"✓ Workspace settings retrieved")
+    #         print(f"   Keys: {list(workspace_settings.keys())[:5]}...")
+    #     except ElevenLabsError as e:
+    #         print(f"⚠ Workspace settings: {e}")
         
-        # ========== AGENTS ==========
-        print("\n" + "=" * 80)
-        print("AGENTS")
-        print("=" * 80)
+    #     # ========== AGENTS ==========
+    #     print("\n" + "=" * 80)
+    #     print("AGENTS")
+    #     print("=" * 80)
         
-        print("\n[3] Counting agents...")
-        try:
-            agent_count = client.count_agents()
-            print(f"✓ Total agents: {agent_count}")
-        except ElevenLabsError as e:
-            print(f"⚠ Agent count: {e}")
-            agent_count = 0
+    #     print("\n[3] Counting agents...")
+    #     try:
+    #         agent_count = client.count_agents()
+    #         print(f"✓ Total agents: {agent_count}")
+    #     except ElevenLabsError as e:
+    #         print(f"⚠ Agent count: {e}")
+    #         agent_count = 0
         
-        print("\n[4] Listing agents...")
-        try:
-            agents_response = client.list_agents(page_size=10)
-            agents = agents_response.get("agents", [])
-            print(f"✓ Listed {len(agents)} agent(s)")
+    #     print("\n[4] Listing agents...")
+    #     try:
+    #         agents_response = client.list_agents(page_size=10)
+    #         agents = agents_response.get("agents", [])
+    #         print(f"✓ Listed {len(agents)} agent(s)")
             
-            if agents:
-                agent = agents[0]
-                agent_id = agent["agent_id"]
-                print(f"   First agent: {agent.get('name', 'Unnamed')} (ID: {agent_id})")
+    #         if agents:
+    #             agent = agents[0]
+    #             agent_id = agent["agent_id"]
+    #             print(f"   First agent: {agent.get('name', 'Unnamed')} (ID: {agent_id})")
                 
-                print(f"\n[5] Getting agent details...")
-                agent_details = client.get_agent(agent_id)
-                print(f"✓ Agent details retrieved")
-                print(f"   Name: {agent_details.get('name')}")
-            else:
-                print("\n⚠ No agents found. Create an agent to test agent endpoints.")
-        except ElevenLabsError as e:
-            print(f"⚠ Agent operations: {e}")
+    #             print(f"\n[5] Getting agent details...")
+    #             agent_details = client.get_agent(agent_id)
+    #             print(f"✓ Agent details retrieved")
+    #             print(f"   Name: {agent_details.get('name')}")
+    #         else:
+    #             print("\n⚠ No agents found. Create an agent to test agent endpoints.")
+    #     except ElevenLabsError as e:
+    #         print(f"⚠ Agent operations: {e}")
         
-        # ========== KNOWLEDGE BASE ==========
-        print("\n" + "=" * 80)
-        print("KNOWLEDGE BASE")
-        print("=" * 80)
+    #     # ========== KNOWLEDGE BASE ==========
+    #     print("\n" + "=" * 80)
+    #     print("KNOWLEDGE BASE")
+    #     print("=" * 80)
         
-        print("\n[6] Listing knowledge base documents...")
-        try:
-            kb_response = client.list_knowledge_base_documents(page_size=10)
-            documents = kb_response.get("documents", [])
-            print(f"✓ Found {len(documents)} document(s)")
+    #     print("\n[6] Listing knowledge base documents...")
+    #     try:
+    #         kb_response = client.list_knowledge_base_documents(page_size=10)
+    #         documents = kb_response.get("documents", [])
+    #         print(f"✓ Found {len(documents)} document(s)")
             
-            if documents:
-                doc = documents[0]
-                doc_id = doc["document_id"]
-                print(f"   First document: {doc.get('name', 'Unnamed')} (ID: {doc_id})")
+    #         if documents:
+    #             doc = documents[0]
+    #             doc_id = doc["document_id"]
+    #             print(f"   First document: {doc.get('name', 'Unnamed')} (ID: {doc_id})")
                 
-                print(f"\n[7] Getting document details...")
-                doc_details = client.get_knowledge_base_document(doc_id)
-                print(f"✓ Document details retrieved")
-                print(f"   Name: {doc_details.get('name')}")
-        except ElevenLabsError as e:
-            print(f"⚠ Knowledge base: {e}")
+    #             print(f"\n[7] Getting document details...")
+    #             doc_details = client.get_knowledge_base_document(doc_id)
+    #             print(f"✓ Document details retrieved")
+    #             print(f"   Name: {doc_details.get('name')}")
+    #     except ElevenLabsError as e:
+    #         print(f"⚠ Knowledge base: {e}")
         
-        # ========== PHONE NUMBERS ==========
-        print("\n" + "=" * 80)
-        print("PHONE NUMBERS")
-        print("=" * 80)
+    #     # ========== PHONE NUMBERS ==========
+    #     print("\n" + "=" * 80)
+    #     print("PHONE NUMBERS")
+    #     print("=" * 80)
         
-        print("\n[8] Listing phone numbers...")
-        try:
-            phone_response = client.list_phone_numbers(page_size=10)
-            phone_numbers = phone_response.get("phone_numbers", [])
-            print(f"✓ Found {len(phone_numbers)} phone number(s)")
+    #     print("\n[8] Listing phone numbers...")
+    #     try:
+    #         phone_response = client.list_phone_numbers(page_size=10)
+    #         phone_numbers = phone_response.get("phone_numbers", [])
+    #         print(f"✓ Found {len(phone_numbers)} phone number(s)")
             
-            if phone_numbers:
-                phone = phone_numbers[0]
-                phone_id = phone["phone_number_id"]
-                print(f"   First number: {phone.get('phone_number', 'N/A')} (ID: {phone_id})")
-        except ElevenLabsError as e:
-            print(f"⚠ Phone numbers: {e}")
+    #         if phone_numbers:
+    #             phone = phone_numbers[0]
+    #             phone_id = phone["phone_number_id"]
+    #             print(f"   First number: {phone.get('phone_number', 'N/A')} (ID: {phone_id})")
+    #     except ElevenLabsError as e:
+    #         print(f"⚠ Phone numbers: {e}")
         
-        # ========== CONVERSATIONS ==========
-        print("\n" + "=" * 80)
-        print("CONVERSATIONS")
-        print("=" * 80)
+    #     # ========== CONVERSATIONS ==========
+    #     print("\n" + "=" * 80)
+    #     print("CONVERSATIONS")
+    #     print("=" * 80)
         
-        print("\n[9] Listing conversations...")
-        try:
-            conv_response = client.list_conversations(page_size=10)
-            conversations = conv_response.get("conversations", [])
-            print(f"✓ Found {len(conversations)} conversation(s)")
+    #     print("\n[9] Listing conversations...")
+    #     try:
+    #         conv_response = client.list_conversations(page_size=10)
+    #         conversations = conv_response.get("conversations", [])
+    #         print(f"✓ Found {len(conversations)} conversation(s)")
             
-            if conversations:
-                conv = conversations[0]
-                conv_id = conv["conversation_id"]
-                print(f"   First conversation: {conv_id}")
+    #         if conversations:
+    #             conv = conversations[0]
+    #             conv_id = conv["conversation_id"]
+    #             print(f"   First conversation: {conv_id}")
                 
-                print(f"\n[10] Getting conversation details...")
-                conv_details = client.get_conversation(conv_id)
-                print(f"✓ Conversation details retrieved")
-                print(f"   Status: {conv_details.get('status', 'N/A')}")
-                print(f"   Duration: {conv_details.get('call_duration', 'N/A')}s")
-        except ElevenLabsError as e:
-            print(f"⚠ Conversations: {e}")
+    #             print(f"\n[10] Getting conversation details...")
+    #             conv_details = client.get_conversation(conv_id)
+    #             print(f"✓ Conversation details retrieved")
+    #             print(f"   Status: {conv_details.get('status', 'N/A')}")
+    #             print(f"   Duration: {conv_details.get('call_duration', 'N/A')}s")
+    #     except ElevenLabsError as e:
+    #         print(f"⚠ Conversations: {e}")
         
-        # ========== SECRETS ==========
-        print("\n" + "=" * 80)
-        print("SECRETS")
-        print("=" * 80)
+    #     # ========== SECRETS ==========
+    #     print("\n" + "=" * 80)
+    #     print("SECRETS")
+    #     print("=" * 80)
         
-        print("\n[11] Listing secrets...")
-        try:
-            secrets = client.list_secrets()
-            print(f"✓ Found {len(secrets)} secret(s)")
-        except ElevenLabsError as e:
-            print(f"⚠ Secrets: {e}")
+    #     print("\n[11] Listing secrets...")
+    #     try:
+    #         secrets = client.list_secrets()
+    #         print(f"✓ Found {len(secrets)} secret(s)")
+    #     except ElevenLabsError as e:
+    #         print(f"⚠ Secrets: {e}")
         
-        # ========== SUMMARY ==========
-        print("\n" + "=" * 80)
-        print("TEST SUMMARY")
-        print("=" * 80)
-        print("\n✓ All tests completed successfully!")
-        print(f"\nStatistics:")
-        print(f"  - Total Agents: {agent_count}")
-        print(f"  - Knowledge Base Documents: {len(documents) if 'documents' in locals() else 0}")
-        print(f"  - Phone Numbers: {len(phone_numbers) if 'phone_numbers' in locals() else 0}")
-        print(f"  - Conversations: {len(conversations) if 'conversations' in locals() else 0}")
-        print(f"  - Secrets: {len(secrets) if 'secrets' in locals() else 0}")
+    #     # ========== SUMMARY ==========
+    #     print("\n" + "=" * 80)
+    #     print("TEST SUMMARY")
+    #     print("=" * 80)
+    #     print("\n✓ All tests completed successfully!")
+    #     print(f"\nStatistics:")
+    #     print(f"  - Total Agents: {agent_count}")
+    #     print(f"  - Knowledge Base Documents: {len(documents) if 'documents' in locals() else 0}")
+    #     print(f"  - Phone Numbers: {len(phone_numbers) if 'phone_numbers' in locals() else 0}")
+    #     print(f"  - Conversations: {len(conversations) if 'conversations' in locals() else 0}")
+    #     print(f"  - Secrets: {len(secrets) if 'secrets' in locals() else 0}")
         
-    except ElevenLabsError as e:
-        print(f"\n✗ ElevenLabs Error: {e}")
-        import traceback
-        traceback.print_exc()
-    except Exception as e:
-        print(f"\n✗ Unexpected error: {e}")
-        import traceback
-        traceback.print_exc()
+    # except ElevenLabsError as e:
+    #     print(f"\n✗ ElevenLabs Error: {e}")
+    #     import traceback
+    #     traceback.print_exc()
+    # except Exception as e:
+    #     print(f"\n✗ Unexpected error: {e}")
+    #     import traceback
+    #     traceback.print_exc()
     
-    print("\n" + "=" * 80)
-    print("Test suite complete!")
-    print("=" * 80)
+    # print("\n" + "=" * 80)
+    # print("Test suite complete!")
+    # print("=" * 80)

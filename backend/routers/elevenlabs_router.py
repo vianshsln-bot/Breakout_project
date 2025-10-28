@@ -19,6 +19,7 @@ Usage:
     app.include_router(router, prefix="/elevenlabs", tags=["ElevenLabs"])
 """
 
+from enum import Enum
 from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, UploadFile, File
 from pydantic import BaseModel, Field
@@ -115,6 +116,10 @@ class SecretCreateRequest(BaseModel):
     name: str = Field(..., description="Secret name")
     value: str = Field(..., description="Secret value")
 
+
+class ModelName(str, Enum):
+    e5_mistral_7b_instruct = "e5_mistral_7b_instruct"
+    multilingual_e5_large_instruct = "multilingual_e5_large_instruct"
 
 # ================== AGENTS ENDPOINTS ==================
 
@@ -427,6 +432,24 @@ async def get_kb_document(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+@router.post("/Knowledge-base/",
+             tags=["Knowledge Base"],
+             summary="Compute Rag Index",
+             description="Computing Rag Index for given knowledge base document")
+async def compute_rag_index(
+    document_id : str,
+    model : ModelName,
+    client: ElevenLabsClient = Depends(get_client),
+):
+    try:
+        print("hiello")
+        return client.compute_rag_index(document_id,model)
+    except ElevenLabsError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+
 
 @router.delete(
     "/knowledge-base/{document_id}",
@@ -452,6 +475,7 @@ async def delete_kb_document(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
 
 
 # ================== PHONE NUMBERS ENDPOINTS ==================
