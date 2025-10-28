@@ -6,7 +6,9 @@ from backend.models.followup_model import FollowUp
 from backend.routers import branch_router, call_analysis_router, \
 call_router, consumption_router, customer_router, employee_router,\
 booking_router, event_router, followup_router, lead_router, linktracker_router,\
-payment_router, payu_payments_router, scripts_router, slot_router, theme_router, compute_router2,bookeo_router,analysis_router, analysis_router2
+payment_router, payu_payments_router, scripts_router, slot_router, theme_router, compute_router2,bookeo_router,\
+analysis_router, analysis_router2, elevenlabs_router
+
 
 
 # ----------------- App Initialization -----------------
@@ -48,6 +50,7 @@ app.add_middleware(
 # Include the routers into the main application.
 # The endpoints defined in these routers will be accessible under their specified prefixes.
 
+app.include_router(elevenlabs_router.router)
 app.include_router(payu_payments_router.router)
 app.include_router(bookeo_router.router)
 app.include_router(booking_router.router)

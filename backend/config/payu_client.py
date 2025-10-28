@@ -15,7 +15,7 @@ from typing import Optional, Dict, Any,List
 from pydantic import BaseModel, Field, EmailStr, validator
 from dotenv import load_dotenv
 
-# load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'keys.env'))
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'keys.env'))
 
 # ============================================================================
 # EXCEPTION CLASSES
@@ -609,9 +609,9 @@ if __name__ == "__main__":
             description="Booking Payment for Event XYZ",
             minAmountForCustomer=500.00,
             customer=CustomerInfo(
-                name="Payment Due",
-                email="naman21266@iiitd.ac.in",
-                phone="9868252552"
+                name="Jane Smith",
+                email="vianshsln@gmail.com",
+                phone="9650848213"
             ),
             udf=UDFInfo(
                 booking_id="BOOK789",

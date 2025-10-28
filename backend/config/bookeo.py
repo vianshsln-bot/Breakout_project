@@ -9,7 +9,7 @@ import os
 from backend.config.payu_client import get_payu_client, PaymentLinkRequest
 from dotenv import load_dotenv
 
-# load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'keys.env'))
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'keys.env'))
 
 
 class BookeoAPI:
@@ -929,7 +929,7 @@ if __name__ == "__main__":
             or slot.get("id")
         )
     event_id = None
-    for s in slot_items:
+    for s in slot_items[1:]:
         eid = extract_event_id(s)
         if eid:
             event_id = eid
@@ -938,7 +938,7 @@ if __name__ == "__main__":
         raise RuntimeError("Could not extract event id from availability")
     print(f"Chosen event_id={event_id}")
     print("\n=== Step 3: Ensure a customer ===")
-    # Try to find existing customer by email; fall back to create
+    # Try to find existing customer by email; fall back to createf
     # cust_search = api.get_customers(query=TEST_EMAIL)
     cust_id = "4256137EUML19A1C09D5A6"
     # if isinstance(cust_search, dict):

@@ -4,6 +4,10 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Optional
 from fastapi import Request, Response
 import hashlib, os
+import time
+import hmac
+from hashlib import sha256
+
 from backend.config.bookeo import BookeoAPI
 
 
@@ -123,3 +127,37 @@ async def payu_webhook(request: Request) -> Response:
     if computed != received:
         return Response(content="invalid signature", status_code=status.HTTP_400_BAD_REQUEST)
     return Response(content="ok", status_code=status.HTTP_200_OK)
+
+
+
+
+
+# Example webhook handler
+# @router.post("/webhook/post_call")
+# async def receive_message(request: Request):
+#     payload = await request.body()
+#     headers = request.headers.get("elevenlabs-signature")
+#     if headers is None:
+#         return
+#     timestamp = headers.split(",")[0][2:]
+#     hmac_signature = headers.split(",")[1]
+
+#     # Validate timestamp
+#     tolerance = int(time.time()) - 30 * 60
+#     if int(timestamp) < tolerance:
+#         return
+
+#     # Validate signature
+#     full_payload_to_sign = f"{timestamp}.{payload.decode('utf-8')}"
+#     mac = hmac.new(
+#         key=secret.encode("utf-8"),
+#         msg=full_payload_to_sign.encode("utf-8"),
+#         digestmod=sha256,
+#     )
+#     digest = 'v0=' + mac.hexdigest()
+#     if hmac_signature != digest:
+#         return
+
+#     # Continue processing
+
+#     return {"status": "received"}
