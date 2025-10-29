@@ -123,17 +123,22 @@ async def get_booking_kpis(
 # ✅ CUSTOMER KPIS
 # ------------------------------------------------------------
 @router.get("/customers", response_model=List[Dict[str, Any]])
-async def get_customer_kpis(date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter)):
+async def get_customer_kpis(
+    date_range: Tuple[datetime, datetime] = Depends(get_global_time_filter),
+    interval: str = Query("full", description="Today, Last week,Last Month, All Time")
+):
     """Customer KPIs"""
     start_time, end_time = date_range
 
     try:
-        period = GLOBAL_TIME_FILTER.get("period", "all_time")
-        params = {
-            "time_period": period.value if hasattr(period, "value") else str(period)
-        }
-
-        response = supabase.rpc('get_all_customer_kpis', params).execute()
+        response = supabase.rpc(
+            'get_all_cust_kpis',
+            {
+                'p_start_time': start_time,
+                'p_end_time': end_time,
+                'p_interval': interval
+            }
+        ).execute()
 
         if not response.data:
             raise HTTPException(status_code=404, detail="No KPI data found.")
@@ -142,10 +147,10 @@ async def get_customer_kpis(date_range: Tuple[datetime, datetime] = Depends(get_
 
         return [
             {"name": "total_customers", "value": kpis['total_customers']},
-            {"name": "new_customers", "value": kpis['new_customers']},
-            {"name": "avg_spend_per_customer", "value": round(kpis['avg_spend_per_customer'], 2), "unit": "currency"},
-            {"name": "customer_conversion_rate", "value": round(kpis['customer_conversion_rate'], 2), "unit": "%"}
+            {"name": "new_customers", "value": kpis['new_customers']}        
         ]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
