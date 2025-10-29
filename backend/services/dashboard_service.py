@@ -276,8 +276,6 @@ def get_satisfaction(time_range: str = "all_time", tz_name: str = "Asia/Kolkata"
     return {"dates": dates, "nps": nps}
 
 
-from collections import defaultdict
-
 # --- Customer Rating Summary ---
 def get_customer_rating_summary(time_range: str = "all_time", tz_name: str = "Asia/Kolkata"):
     # Join call_analysis -> call and filter by call.date_time
