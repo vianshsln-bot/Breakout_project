@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Brain } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/config';
 
 interface AiMetric {
   name: string;
@@ -11,44 +12,66 @@ interface AiMetric {
   output_format: string;
 }
 
-export function AiPerformance() {
+export function AiPerformance({ filter }: { filter: string }) {
   const [metrics, setMetrics] = useState<AiMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const fetchAiKpis = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('https://breakout-project.onrender.com/kpis/llmkpi');
+        const url = `${API_BASE_URL}/kpis/llmkpi?filter=${filter}`;
+            
+        const response = await fetch(url, { signal });
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Failed to fetch AI KPIs: ${response.status} ${errorText}`);
+          throw new Error(`Failed to fetch AI KPIs: ${response.status} ${errorText || response.statusText}`);
         }
         const data = await response.json();
         setMetrics(data.llmkpi || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load AI KPIs.');
+        if ((err as Error).name === 'AbortError') {
+          console.log('Fetch AI KPIs aborted');
+          return;
+        }
+        setError(err instanceof Error ? err.message : 'An unknown error occurred while fetching AI KPIs.');
       } finally {
         setLoading(false);
       }
     };
+
     fetchAiKpis();
-  }, []);
+
+    return () => {
+      controller.abort();
+    };
+  }, [filter]);
 
   const renderKpiCards = () => {
-    if (loading && metrics.length === 0) {
+    if (loading) {
       return Array.from({ length: 4 }).map((_, index) => (
         <div key={index} className="p-4 bg-purple-50 rounded-lg border border-purple-100 h-24 animate-pulse" />
       ));
     }
     
-    if (error && metrics.length === 0) {
+    if (error) {
         return (
             <div className="col-span-full bg-red-50 text-red-700 p-4 rounded-lg text-center">
                 <p>Failed to load AI KPI data.</p>
                 <p className="text-sm">{error}</p>
+            </div>
+        )
+    }
+    
+    if (metrics.length === 0) {
+        return (
+             <div className="col-span-full text-gray-500 p-4 rounded-lg text-center">
+                <p>No AI KPI data available for this period.</p>
             </div>
         )
     }

@@ -8,20 +8,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExecutiveOverview } from './_components/executive-overview';
 import { KpiSection } from './_components/kpi-section';
 import { AiPerformance } from './_components/ai-performance';
-import { QualityAssurance } from './_components/quality-assurance';
 import { Alerts } from './_components/alerts';
 import { AdditionalAnalytics } from './_components/additional-analytics';
 import { useAuth } from '@/context/AuthContext';
+import { useDashboardFilter } from '@/context/DashboardFilterContext';
 
 const formatDurationFromSeconds = (seconds: number) => {
-  if (seconds < 3600) {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.round(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')} min`;
-  }
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  return `${hours}h ${mins}m`;
+  const secs = Math.round(seconds % 60);
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
 export default function AnalysisPage() {
@@ -30,39 +26,56 @@ export default function AnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
+  const { dateRange } = useDashboardFilter();
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    
+    const controller = new AbortController();
+    const signal = controller.signal;
 
     const fetchKpis = async () => {
       setLoading(true);
-      // Don't clear previous error, so UI can show stale data while retrying
-      // setError(null);
-      try {
-        const [kpiResponse, customerKpiResponse, leadsKpiResponse, bookingsKpiResponse] = await Promise.all([
-            fetch(`${API_BASE_URL}/compute/kpis`),
-            fetch(`${API_BASE_URL}/kpis/customers`),
-            fetch(`${API_BASE_URL}/kpis/leads`),
-            fetch(`${API_BASE_URL}/kpis/bookings`)
-        ]);
+      setError(null);
+      // Reset state on new fetch
+      setExecutiveMetrics([]);
+      setKpiMetrics([]);
 
-        if (!kpiResponse.ok) throw new Error(`HTTP error on main KPIs! Status: ${kpiResponse.status} ${await kpiResponse.text()}`);
-        if (!customerKpiResponse.ok) throw new Error(`HTTP error on customer KPIs! Status: ${customerKpiResponse.status} ${await customerKpiResponse.text()}`);
-        if (!leadsKpiResponse.ok) throw new Error(`HTTP error on leads KPIs! Status: ${leadsKpiResponse.status} ${await leadsKpiResponse.text()}`);
-        if (!bookingsKpiResponse.ok) throw new Error(`HTTP error on bookings KPIs! Status: ${bookingsKpiResponse.status} ${await bookingsKpiResponse.text()}`);
+      try {
+        // Fetch main KPIs first
+        const mainKpiUrl = `${API_BASE_URL}/compute/kpis?filter=${dateRange}`;
+        const mainKpiResponse = await fetch(mainKpiUrl, { signal });
+        if (!mainKpiResponse.ok) {
+            const errorText = await mainKpiResponse.text();
+            throw new Error(`Failed to fetch main KPIs: ${mainKpiResponse.status} ${errorText || mainKpiResponse.statusText}`);
+        }
+        const mainKpiData: KpiApiResponse = await mainKpiResponse.json();
+
+        // Fetch supplemental KPIs gracefully
+        const supplementalUrls = {
+            customers: `${API_BASE_URL}/kpis/customers?filter=${dateRange}`,
+            leads: `${API_BASE_URL}/kpis/leads?filter=${dateRange}`,
+            bookings: `${API_BASE_URL}/kpis/bookings?filter=${dateRange}`,
+        };
+
+        const supplementalResponses = await Promise.all(
+            Object.values(supplementalUrls).map(url => fetch(url, { signal }).catch(e => e))
+        );
+
+        const [customerKpiResponse, leadsKpiResponse, bookingsKpiResponse] = supplementalResponses;
         
-        const data: KpiApiResponse = await kpiResponse.json();
-        const customerKpiData: {name: string, value: any, unit?: string}[] = await customerKpiResponse.json();
-        const leadsKpiData: {name: string, value: any, unit?: string}[] = await leadsKpiResponse.json();
-        const bookingsKpiData: {name: string, value: any, unit?: string}[] = await bookingsKpiResponse.json();
-        
-        const customerKpisObject = customerKpiData.reduce((acc, item) => {
+        // Process supplemental data if the fetch was successful
+        const customerKpiData = (customerKpiResponse instanceof Response && customerKpiResponse.ok) ? await customerKpiResponse.json() : null;
+        const leadsKpiData = (leadsKpiResponse instanceof Response && leadsKpiResponse.ok) ? await leadsKpiResponse.json() : null;
+        const bookingsKpiData = (bookingsKpiResponse instanceof Response && bookingsKpiResponse.ok) ? await bookingsKpiResponse.json() : null;
+
+        const customerKpisObject = customerKpiData && Array.isArray(customerKpiData) ? customerKpiData.reduce((acc, item) => {
             const key = item.name === 'customer_conversion_rate' ? 'customer_conversion_rate_pct' : item.name;
             acc[key] = item.value;
             return acc;
-        }, {} as Record<string, any>);
+        }, {} as Record<string, any>) : {};
         
-        const leadsKpiObject = leadsKpiData.reduce((acc, item) => {
+        const leadsKpiObject = leadsKpiData && Array.isArray(leadsKpiData) ? leadsKpiData.reduce((acc, item) => {
             const keyMap: Record<string, string> = {
                 'lead_conversion_rate': 'lead_conversion_rate_pct',
                 'avg_lead_response_time': 'lead_response_time_sec',
@@ -76,10 +89,10 @@ export default function AnalysisPage() {
             }
             acc[key] = value;
             return acc;
-        }, {} as Record<string, any>);
+        }, {} as Record<string, any>) : {};
 
-        const bookingsKpiObject = bookingsKpiData.reduce((acc, item) => {
-             const keyMap: Record<string, string> = {
+        const bookingsKpiObject = bookingsKpiData && Array.isArray(bookingsKpiData) ? bookingsKpiData.reduce((acc, item) => {
+            const keyMap: Record<string, string> = {
                 'booking_conversion_rate': 'booking_conversion_rate_pct',
                 'cancellation_rate': 'cancellation_rate_pct',
                 'repeat_booking_rate': 'repeat_booking_rate_pct',
@@ -87,33 +100,32 @@ export default function AnalysisPage() {
             const key = keyMap[item.name] || item.name;
             acc[key] = item.value;
             return acc;
-        }, {} as Record<string, any>);
+        }, {} as Record<string, any>) : {};
 
         // Merge all KPI sources
-        const kpis = { ...data.kpis, ...customerKpisObject, ...leadsKpiObject, ...bookingsKpiObject };
-        setError(null); // Clear error on success
+        const kpis = { ...mainKpiData.kpis, ...customerKpisObject, ...leadsKpiObject, ...bookingsKpiObject };
 
-        const executiveKpiConfig: { id: keyof KpiApiResponse['kpis']; label: string; target: string; higherIsBetter: boolean, unit: 'percentage' | 'seconds' | 'number' | 'rating' }[] = [
+        const executiveKpiConfig: { id: keyof typeof kpis; label: string; target: string; higherIsBetter: boolean, unit: 'percentage' | 'seconds' | 'number' | 'rating' }[] = [
             { id: 'first_call_resolution_pct', label: 'First Call Resolution', target: '>90%', higherIsBetter: true, unit: 'percentage' },
-            { id: 'avg_call_duration_sec', label: 'Avg Call Duration', target: '<5 min', higherIsBetter: false, unit: 'seconds' },
+            { id: 'avg_call_duration_sec', label: 'Avg Call Duration', target: '<300s', higherIsBetter: false, unit: 'seconds' },
             { id: 'call_abandon_rate_pct', label: 'Call Abandon Rate', target: '<5%', higherIsBetter: false, unit: 'percentage' },
-            { id: 'customer_satisfaction_avg_rating', label: 'Customer Satisfaction', target: '>4.5', higherIsBetter: true, unit: 'rating' },
             { id: 'missed_calls', label: 'Missed Calls', target: '0', higherIsBetter: false, unit: 'number' },
-            { id: 'customer_conversion_rate_pct', label: 'Customer Conversion Rate', target: '>10%', higherIsBetter: true, unit: 'percentage' },
             { id: 'overall_quality_score', label: 'Overall Quality Score', target: '>85', higherIsBetter: true, unit: 'number' },
             { id: 'positive_sentiment_rate_pct', label: 'Positive Sentiment Rate', target: '>80%', higherIsBetter: true, unit: 'percentage' },
         ];
 
-        const detailedKpiConfig: { id: keyof KpiApiResponse['kpis']; label: string; target: string; higherIsBetter: boolean, unit: 'percentage' | 'seconds' | 'number' | 'rating' | 'currency' | 'string' }[] = [
+        const detailedKpiConfig: { id: keyof typeof kpis; label: string; target: string; higherIsBetter: boolean, unit: 'percentage' | 'seconds' | 'number' | 'rating' | 'currency' | 'string' }[] = [
             // Customers
             { id: 'total_customers', label: 'Total Customers', target: '>1000', higherIsBetter: true, unit: 'number' },
             { id: 'new_customers', label: 'New Customers', target: '>50', higherIsBetter: true, unit: 'number' },
             { id: 'avg_spend_per_customer', label: 'Average Spend per Customer', target: '>$500', higherIsBetter: true, unit: 'currency' },
-            
+            { id: 'customer_satisfaction_avg_rating', label: 'Customer Satisfaction', target: '>4.0', higherIsBetter: true, unit: 'rating' },
+            { id: 'customer_conversion_rate_pct', label: 'Customer Conversion Rate', target: '>10%', higherIsBetter: true, unit: 'percentage' },
+
             // Leads
             { id: 'total_leads_generated', label: 'Total Leads Generated', target: '>200', higherIsBetter: true, unit: 'number' },
             { id: 'lead_conversion_rate_pct', label: 'Lead Conversion Rate', target: '>15%', higherIsBetter: true, unit: 'percentage' },
-            { id: 'lead_response_time_sec', label: 'Lead Response Time', target: '<1hr', higherIsBetter: false, unit: 'seconds' },
+            { id: 'lead_response_time_sec', label: 'Lead Response Time', target: '<3600s', higherIsBetter: false, unit: 'seconds' },
             { id: 'lead_source_effectiveness', label: 'Lead Source Effectiveness', target: 'N/A', higherIsBetter: true, unit: 'string' },
             { id: 'qualified_lead_ratio_pct', label: 'Qualified Lead Ratio (SQL/MQL)', target: '>60%', higherIsBetter: true, unit: 'percentage' },
 
@@ -127,7 +139,21 @@ export default function AnalysisPage() {
 
         const processKpis = (config: any[]): KPIMetric[] => {
             return config.map(conf => {
-                const value = kpis[conf.id as keyof typeof kpis] ?? 0;
+                const value = kpis[conf.id as keyof typeof kpis];
+                
+                // If value is missing or null, return a placeholder
+                if (value === undefined || value === null) {
+                    return {
+                        id: conf.id,
+                        label: conf.label,
+                        value: '-',
+                        target: conf.target,
+                        trend: 'stable',
+                        status: 'warning',
+                        sparklineData: Array(8).fill(0),
+                    };
+                }
+
                 let displayValue: string;
                 let status: 'good' | 'warning' | 'critical';
 
@@ -135,25 +161,24 @@ export default function AnalysisPage() {
 
                 switch (conf.unit) {
                     case 'percentage':
-                        displayValue = `${Number(value).toFixed(1)}%`;
+                        displayValue = `${Number(value).toFixed(2)}%`;
                         status = conf.higherIsBetter 
                             ? (Number(value) >= targetValue ? 'good' : 'warning') 
                             : (Number(value) <= targetValue ? 'good' : 'warning');
                         break;
                     case 'seconds':
-                        const targetInSeconds = conf.target.includes('hr') ? targetValue * 3600 : targetValue * 60;
                         displayValue = formatDurationFromSeconds(Number(value));
                         status = conf.higherIsBetter 
-                            ? (Number(value) >= targetInSeconds ? 'good' : 'warning') 
-                            : (Number(value) <= targetInSeconds ? 'good' : 'warning');
+                            ? (Number(value) >= targetValue ? 'good' : 'warning') 
+                            : (Number(value) <= targetValue ? 'good' : 'warning');
                         break;
                     case 'rating':
-                        displayValue = `${Number(value).toFixed(1)}/5`;
+                        displayValue = `${Number(value).toFixed(2)}/5`;
                         status = Number(value) >= targetValue ? 'good' : 'warning';
                         break;
                     case 'currency':
                         const kValue = (Number(value)/1000);
-                        if (kValue > 0) {
+                        if (Math.abs(kValue) >= 1) {
                             displayValue = `$${kValue.toFixed(1)}k`;
                         } else {
                              displayValue = `$${Number(value).toFixed(2)}`;
@@ -167,7 +192,7 @@ export default function AnalysisPage() {
                         status = 'good';
                         break;
                     default: // number
-                        displayValue = value.toString();
+                        displayValue = Number.isInteger(value) ? value.toString() : Number(value).toFixed(2);
                         status = conf.higherIsBetter
                           ? (Number(value) >= targetValue ? 'good' : 'warning')
                           : (Number(value) <= targetValue ? 'good' : 'warning');
@@ -175,6 +200,7 @@ export default function AnalysisPage() {
                 }
                 
                 const generateSparklineData = (currentValue: number, points: number = 8) => {
+                  if (currentValue === 0) return Array(points).fill(0);
                   const data = [currentValue];
                   for (let i = 1; i < points; i++) {
                     const fluctuation = (Math.random() - 0.5) * (currentValue * 0.2);
@@ -206,19 +232,23 @@ export default function AnalysisPage() {
                     status: status,
                     sparklineData: sparklineData,
                 };
-            });
+            }).filter(Boolean) as KPIMetric[];
         }
         
-        const executiveKpis = processKpis(executiveKpiConfig);
-        const allKpis = processKpis(detailedKpiConfig);
+        const execKpis = processKpis(executiveKpiConfig);
+        const allOtherKpis = processKpis(detailedKpiConfig);
 
-        setExecutiveMetrics(executiveKpis);
-        setKpiMetrics(allKpis);
+        setExecutiveMetrics(execKpis);
+        setKpiMetrics(allOtherKpis);
       } catch (err) {
+        if ((err as Error).name === 'AbortError') {
+          console.log('Fetch aborted');
+          return;
+        }
         if (err instanceof Error) {
-          setError(err.message);
+          setError(`Failed to load key analytics: ${err.message}`);
         } else {
-          setError('An unexpected error occurred');
+          setError('An unexpected error occurred. Please check the console for more details.');
         }
       } finally {
         setLoading(false);
@@ -226,15 +256,26 @@ export default function AnalysisPage() {
     };
     
     fetchKpis();
-  }, [isAuthenticated]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [isAuthenticated, dateRange]);
 
   const allMetrics = [...executiveMetrics, ...kpiMetrics];
+  
+  const customerKpiIds = ['total_customers', 'new_customers', 'avg_spend_per_customer', 'customer_satisfaction_avg_rating', 'customer_conversion_rate_pct'];
+  const leadKpiIds = ['total_leads_generated', 'lead_conversion_rate_pct', 'lead_response_time_sec', 'lead_source_effectiveness', 'qualified_lead_ratio_pct'];
+  const bookingKpiIds = ['total_bookings', 'booking_conversion_rate_pct', 'avg_booking_value', 'cancellation_rate_pct', 'repeat_booking_rate_pct'];
+
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Business Intelligence Hub</h1>
-        <p className="text-gray-500 mt-1">Deep dive analytics and AI performance metrics</p>
+      <div className="flex justify-between items-center">
+        <div>
+            <h1 className="text-3xl font-bold text-gray-900">Business Intelligence Hub</h1>
+            <p className="text-gray-500 mt-1">Deep dive analytics and AI performance metrics</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols gap-6">
@@ -256,7 +297,7 @@ export default function AnalysisPage() {
             <TabsContent value="customers">
               <KpiSection 
                 title="KPIs - Customers" 
-                kpiIds={['total_customers', 'new_customers', 'avg_spend_per_customer']}
+                kpiIds={customerKpiIds}
                 metrics={kpiMetrics}
                 loading={loading}
               />
@@ -264,7 +305,7 @@ export default function AnalysisPage() {
             <TabsContent value="leads">
               <KpiSection 
                 title="KPIs - Leads"
-                kpiIds={['total_leads_generated', 'lead_conversion_rate_pct', 'lead_response_time_sec', 'lead_source_effectiveness', 'qualified_lead_ratio_pct']}
+                kpiIds={leadKpiIds}
                 metrics={kpiMetrics}
                 loading={loading}
               />
@@ -272,15 +313,15 @@ export default function AnalysisPage() {
             <TabsContent value="bookings">
               <KpiSection
                 title="KPIs - Bookings"
-                kpiIds={['total_bookings', 'booking_conversion_rate_pct', 'avg_booking_value', 'cancellation_rate_pct', 'repeat_booking_rate_pct']}
+                kpiIds={bookingKpiIds}
                 metrics={kpiMetrics}
                 loading={loading}
               />
             </TabsContent>
           </Tabs>
           
-          <AdditionalAnalytics />
-          <AiPerformance />
+          <AdditionalAnalytics filter={dateRange} />
+          <AiPerformance filter={dateRange} />
           {/* <QualityAssurance /> */}
           <Alerts metrics={allMetrics} loading={loading} />
         </div>

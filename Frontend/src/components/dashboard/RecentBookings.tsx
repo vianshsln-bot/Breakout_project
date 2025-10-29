@@ -27,12 +27,12 @@ export const RecentBookings = ({ recentBookings, bookingsLoading, bookingsError 
       );
     }
 
-    if (bookingsError) {
+    if (bookingsError || recentBookings.length === 0) {
       return (
-        <div className="max-h-96 flex items-center justify-center bg-gray-50 rounded-lg">
-          <div className="text-red-500 text-center">
-            <p>Failed to load bookings.</p>
-            <p className="text-sm">{bookingsError}</p>
+        <div className="max-h-96 h-60 flex items-center justify-center bg-gray-50 rounded-lg">
+          <div className="text-gray-500 text-center">
+            <p>No Data to Show</p>
+            {bookingsError && <p className="text-sm text-red-500">{bookingsError}</p>}
           </div>
         </div>
       );

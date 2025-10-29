@@ -3,6 +3,7 @@
 
 import { Booking } from '@/lib/types';
 import { Calendar } from 'lucide-react';
+import { useMemo } from 'react';
 
 interface BookingHeatmapProps {
   bookings: Booking[];
@@ -14,24 +15,28 @@ export function BookingHeatmap({ bookings, loading }: BookingHeatmapProps) {
   const prev7Days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0); // Normalize to start of the day
     return d;
   }).reverse();
 
-  const bookingGrid: Record<string, Set<string>> = {};
-  for (const booking of bookings) {
-    try {
-      const startTime = new Date(booking.start_time);
-      const dateKey = startTime.toISOString().split('T')[0];
-      const hourKey = `${startTime.getUTCHours().toString().padStart(2, '0')}:00`;
+  const bookingGrid = useMemo(() => {
+    const grid: Record<string, Set<string>> = {};
+    for (const booking of bookings) {
+      try {
+        const startTime = new Date(booking.start_time);
+        const dateKey = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate()).toISOString();
+        const hourKey = `${startTime.getHours().toString().padStart(2, '0')}:00`;
 
-      if (!bookingGrid[dateKey]) {
-        bookingGrid[dateKey] = new Set();
+        if (!grid[dateKey]) {
+          grid[dateKey] = new Set();
+        }
+        grid[dateKey].add(hourKey);
+      } catch (e) {
+        console.error("Invalid booking date", booking);
       }
-      bookingGrid[dateKey].add(hourKey);
-    } catch (e) {
-      console.error("Invalid booking date", booking);
     }
-  }
+    return grid;
+  }, [bookings]);
 
   const renderHeatmap = () => {
     if (loading) {
@@ -53,7 +58,7 @@ export function BookingHeatmap({ bookings, loading }: BookingHeatmapProps) {
 
           {/* Date rows */}
           {prev7Days.map(day => {
-            const dateKey = day.toISOString().split('T')[0];
+            const dateKey = day.toISOString();
             const isToday = new Date().toDateString() === day.toDateString();
 
             return (

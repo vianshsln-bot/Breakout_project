@@ -1,6 +1,7 @@
 
 'use client';
 import { ApiCall as Call } from '@/lib/types';
+import { Button } from '@/components/ui/button';
 
 interface CallListProps {
   calls: Call[];
@@ -8,10 +9,13 @@ interface CallListProps {
   onSelectCall: (call: Call) => void;
   loading: boolean;
   error: string | null;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 }
 
-export function CallList({ calls, selectedCall, onSelectCall, loading, error }: CallListProps) {
-  if (loading && calls.length === 0) { // Only show skeleton on initial load
+export function CallList({ calls, selectedCall, onSelectCall, loading, error, currentPage, totalPages, onPageChange }: CallListProps) {
+  if (loading) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -31,40 +35,62 @@ export function CallList({ calls, selectedCall, onSelectCall, loading, error }: 
       </div>
     );
   }
+  
+  if (calls.length === 0) {
+    return (
+        <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
+            <p>No calls found matching your criteria.</p>
+        </div>
+    );
+  }
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    return (
+        <div className="flex justify-between items-center pt-4">
+            <Button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>Previous</Button>
+            <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
+            <Button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>Next</Button>
+        </div>
+    )
+  }
 
   return (
-    <div className="space-y-3">
-      {calls.map((call) => (
-        <div
-          key={call.conv_id}
-          onClick={() => onSelectCall(call)}
-          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-            selectedCall?.conv_id === call.conv_id
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-200 hover:border-blue-300'
-          }`}
-        >
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <p className="font-semibold text-gray-900">Conversation: {call.conv_id}</p>
-              <p className="text-sm text-gray-600">
-                Customer ID: {call.customer_id}
-              </p>
+    <>
+      <div className="space-y-3">
+        {calls.map((call) => (
+          <div
+            key={call.conv_id}
+            onClick={() => onSelectCall(call)}
+            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+              selectedCall?.conv_id === call.conv_id
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 hover:border-blue-300'
+            }`}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="font-semibold text-gray-900">Conversation: {call.conv_id.slice(-8)}</p>
+                <p className="text-sm text-gray-600">
+                  Customer ID: {call.customer_id}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500 mt-1">{Math.floor(call.duration / 60)}m {call.duration % 60}s</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-500 mt-1">{Math.floor(call.duration / 60)}m {call.duration % 60}s</p>
+            <div className="flex gap-2 mb-2">
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">
+                {call.call_intent}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-xs text-gray-500">
+              <span>{new Date(call.date_time).toLocaleString()}</span>
             </div>
           </div>
-          <div className="flex gap-2 mb-2">
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">
-              {call.call_intent}
-            </span>
-          </div>
-          <div className="flex justify-between items-center text-xs text-gray-500">
-            <span>{new Date(call.date_time).toLocaleString()}</span>
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      {renderPagination()}
+    </>
   );
 }

@@ -34,8 +34,8 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      if (!response.ok || !data.exists) {
-        throw new Error(data.reason || 'Invalid credentials. Please try again.');
+      if (!response.ok) {
+        throw new Error(data.reason || `Login failed with status: ${response.status}`);
       }
 
       if (data.exists) {
@@ -46,6 +46,8 @@ export default function LoginPage() {
           title: 'Login Successful',
           description: `Welcome back! You are logged in as ${role}.`,
         });
+      } else {
+        throw new Error(data.reason || 'Invalid credentials. Please try again.');
       }
     } catch (error) {
       toast({

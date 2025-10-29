@@ -1,3 +1,4 @@
+
 import { ReactNode } from "react";
 
 
@@ -197,14 +198,15 @@ export interface WhatsAppTemplate {
 }
 
 export interface Theme {
-    Name: string;
-    Description: string;
-    Duration: number;
-    Minimum_players: number;
-    Trailers: string | null;
-    Price_per_person: number;
-    Theme_ID: number;
+  theme_id: string;
+  name: string;
+  description: string;
+  duration_minutes: number;
+  booking_limit_min: number;
+  booking_limit_max: number;
+  price_per_person?: number; // Optional as it's not in the provided API output
 }
+
 
 export interface Alert {
   id: string;

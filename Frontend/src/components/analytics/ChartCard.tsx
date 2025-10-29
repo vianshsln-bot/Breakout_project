@@ -29,6 +29,7 @@ type ChartCardProps = {
   data: any[];
   isLoading?: boolean;
   error?: string | null;
+  isRetrying?: boolean;
 };
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28CFE', '#FF6F91'];
@@ -68,47 +69,68 @@ export const ChartCard: React.FC<ChartCardProps> = ({
   data,
   isLoading,
   error,
+  isRetrying,
 }) => {
+  const chartContainer = "p-6 bg-gray-100 rounded-xl shadow-md h-72 flex items-center justify-center text-center";
+
   if (isLoading)
     return (
       <div className="animate-pulse p-6 bg-white rounded-xl shadow-md h-72 flex items-center justify-center">
         Loading...
       </div>
     );
-  if (error)
+  
+  if (error && !isRetrying)
     return (
-      <div className="p-6 bg-red-100 text-red-700 rounded-xl shadow-md h-72 flex items-center justify-center">
-        {error}
-      </div>
-    );
-  if (!data || data.length === 0)
-    return (
-      <div className="p-6 bg-gray-100 rounded-xl shadow-md h-72 flex items-center justify-center">
-        No data
+      <div className={`${chartContainer} bg-red-50 text-red-700`}>
+        <p>No Data to Show</p>
+        <p className="text-xs mt-1">{error}</p>
       </div>
     );
 
+  if ((!data || data.length === 0)) {
+     if (isRetrying) {
+        return (
+            <div className={`${chartContainer} bg-amber-50 text-amber-800`}>
+                <div>
+                    <p>Temporarily unavailable.</p>
+                    <p className="text-xs mt-1">Retrying in background...</p>
+                </div>
+            </div>
+        )
+     }
+    return (
+      <div className={chartContainer}>
+        No data
+      </div>
+    );
+  }
+
   const renderChart = () => {
+    // Check for required keys to prevent crashes
+    const firstItem = data[0] || {};
+    const has = (key: string) => Object.prototype.hasOwnProperty.call(firstItem, key);
+
     switch (chartType) {
       case 'line':
         return (
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={data[0]?.date ? "date" : "name"} />
+            <XAxis dataKey={has('date') ? "date" : "name"} />
             <YAxis />
             <Tooltip />
-            <Line type="monotone" dataKey={data[0]?.total_calls ? "total_calls" : "value"} stroke="#8884d8" />
+            <Line type="monotone" dataKey={has('total_calls') ? "total_calls" : "value"} stroke="#8884d8" />
           </LineChart>
         );
        case 'bar':
         return (
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={data[0]?.date ? "date" : "name"} />
+            <XAxis dataKey={has('date') ? "date" : "name"} />
             <YAxis />
             <Tooltip />
             <Legend />
-            <Bar dataKey={data[0]?.bookings ? "bookings" : "value"} fill="#8884d8" />
+            <Bar dataKey={has('bookings') ? "bookings" : "value"} fill="#8884d8" />
           </BarChart>
         );
       case 'bar-line':
@@ -174,9 +196,9 @@ export const ChartCard: React.FC<ChartCardProps> = ({
           <BarChart layout="vertical" data={data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" />
-            <YAxis dataKey={data[0]?.stage ? "stage" : "name"} type="category" width={80} interval={0} />
+            <YAxis dataKey={has('stage') ? "stage" : "name"} type="category" width={80} interval={0} />
             <Tooltip />
-            <Bar dataKey={data[0]?.count ? "count" : "value"} fill="#8884d8" />
+            <Bar dataKey={has('count') ? "count" : "value"} fill="#8884d8" />
           </BarChart>
         );
       case 'dual-bar':

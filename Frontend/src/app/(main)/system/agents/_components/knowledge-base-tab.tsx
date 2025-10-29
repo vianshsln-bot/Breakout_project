@@ -53,13 +53,13 @@ export function KnowledgeBaseTab() {
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Failed to fetch documents: ${response.status} ${errorText}`);
+                throw new Error(`Failed to fetch documents: ${response.status} ${errorText || response.statusText}`);
             }
             const data: ApiResponse = await response.json();
             setDocuments(data.documents || []);
             setError(null); // Clear error on success
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Could not load knowledge base documents.';
+            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred while fetching documents.';
             setError(errorMessage);
             console.error(err);
         } finally {
@@ -84,7 +84,7 @@ export function KnowledgeBaseTab() {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Failed to delete document: ${response.status} ${errorText}`);
+                throw new Error(`Failed to delete document: ${response.status} ${errorText || response.statusText}`);
             }
 
             toast({
@@ -112,7 +112,7 @@ export function KnowledgeBaseTab() {
 
     const renderDocumentList = () => {
         if (loading && documents.length === 0) return <div className="text-center p-8">Loading documents...</div>;
-        if (error && documents.length === 0) return <div className="text-center p-8 text-red-500">{error}</div>;
+        if (error && documents.length === 0) return <div className="text-center p-8 text-red-500 bg-red-50 rounded-lg">{error}</div>;
         if (filteredDocuments.length === 0) return <div className="text-center p-8 text-gray-500">No documents found.</div>;
 
         return (
@@ -296,7 +296,10 @@ function CreateDocumentDialog({ open, onOpenChange, onSuccess, apiKey }: { open:
                 headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
                 body: JSON.stringify({ url, name: urlName || undefined }),
             });
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to add URL: ${response.status} ${errorText || response.statusText}`);
+            }
             const result = await response.json();
             toast({ title: 'URL Added', description: `Document "${result.name}" (${result.id}) is being indexed.` });
             onSuccess();
@@ -352,7 +355,10 @@ function CreateDocumentDialog({ open, onOpenChange, onSuccess, apiKey }: { open:
                 headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
                 body: JSON.stringify({ text: textContent, name: textName || textData.companyName || 'Company Knowledge Base' }),
             });
-            if (!response.ok) throw new Error(await response.text());
+             if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to create text document: ${response.status} ${errorText || response.statusText}`);
+            }
             const result = await response.json();
             toast({ title: 'Text Document Created', description: `Document "${result.name}" (${result.id}) is being indexed.` });
             onSuccess();
@@ -380,7 +386,10 @@ function CreateDocumentDialog({ open, onOpenChange, onSuccess, apiKey }: { open:
                 headers: { 'xi-api-key': apiKey },
                 body: formData,
             });
-            if (!response.ok) throw new Error(await response.text());
+             if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to upload file: ${response.status} ${errorText || response.statusText}`);
+            }
             const result = await response.json();
             toast({ title: 'File Uploaded', description: `Document "${result.name}" (${result.id}) is being indexed.` });
             onSuccess();

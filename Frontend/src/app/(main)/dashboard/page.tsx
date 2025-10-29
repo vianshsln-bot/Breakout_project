@@ -1,16 +1,17 @@
 
 'use client';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { Header } from '@/components/dashboard/Header';
 import { KpiGrid } from '@/components/dashboard/KpiGrid';
 import { ActiveCalls } from '@/components/dashboard/ActiveCalls';
-import { CallVolume } from '@/components/dashboard/CallVolume';
-import { SentimentDistribution } from '@/components/dashboard/SentimentDistribution';
 import { RecentBookings } from '@/components/dashboard/RecentBookings';
 import { SystemAlerts } from '@/components/dashboard/SystemAlerts';
 import { AnalyticsOverview } from '@/components/analytics-overview';
+import { useDashboardFilter } from '@/context/DashboardFilterContext';
+import { CallVolume } from '@/components/dashboard/CallVolume';
+import { SentimentDistribution } from '@/components/dashboard/SentimentDistribution';
 
-export default function DashboardPage() {
+function DashboardContent() {
+  const { dateRange } = useDashboardFilter();
   const { 
     kpiMetrics, 
     recentBookings, 
@@ -23,19 +24,16 @@ export default function DashboardPage() {
     kpiError, 
     bookingsError, 
     callsError 
-  } = useDashboardData();
+  } = useDashboardData(dateRange);
 
   return (
     <div className="space-y-6">
-      <Header />
-
       <KpiGrid kpiMetrics={kpiMetrics} kpiLoading={kpiLoading} kpiError={kpiError} />
-
-      <AnalyticsOverview />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <ActiveCalls 
+           <AnalyticsOverview />
+           <ActiveCalls 
             activeCalls={activeCalls} 
             callsLoading={callsLoading} 
             callsError={callsError} 
@@ -53,4 +51,11 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+
+export default function DashboardPage() {
+  return (
+    <DashboardContent />
+  )
 }

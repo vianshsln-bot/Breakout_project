@@ -14,11 +14,11 @@ export const KpiGrid = ({ kpiMetrics, kpiLoading, kpiError }: { kpiMetrics: KPIM
     );
   }
 
-  if (kpiError) {
+  if (kpiError || kpiMetrics.length === 0) {
     return (
-      <div className="col-span-full bg-red-50 text-red-700 p-4 rounded-lg text-center">
-        <p>Failed to load KPI data.</p>
-        <p className="text-sm">{kpiError}</p>
+      <div className="col-span-full bg-gray-50 text-gray-500 p-4 rounded-lg text-center h-32 flex items-center justify-center">
+        <p>No Data to Show</p>
+        {kpiError && <p className="text-sm text-red-500">{kpiError}</p>}
       </div>
     );
   }

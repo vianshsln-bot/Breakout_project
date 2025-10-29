@@ -21,11 +21,11 @@ export function ExecutiveOverview({ metrics, loading, error }: ExecutiveOverview
     );
   }
 
-  if (error) {
+  if (error || metrics.length === 0) {
     return (
-      <div className="col-span-full bg-red-50 text-red-700 p-4 rounded-lg text-center mb-8">
-        <p className="font-bold">Failed to load Executive Overview KPI data.</p>
-        <p className="text-sm">{error}</p>
+      <div className="col-span-full bg-gray-50 text-gray-500 p-4 rounded-lg text-center mb-8">
+        <p>No Data to Show</p>
+        {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
     );
   }

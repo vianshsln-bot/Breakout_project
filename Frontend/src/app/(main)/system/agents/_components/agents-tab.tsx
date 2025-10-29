@@ -42,7 +42,7 @@ export function AgentsTab({ onAgentCreated }: { onAgentCreated: () => void }) {
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Failed to fetch agents: ${response.status} ${errorText}`);
+                throw new Error(`Failed to fetch agents: ${response.status} ${errorText || response.statusText}`);
             }
             const data = await response.json();
             
@@ -58,7 +58,7 @@ export function AgentsTab({ onAgentCreated }: { onAgentCreated: () => void }) {
             }
             setError(null); // Clear error on success
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to fetch agents. Please try again later.';
+            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred while fetching agents.';
             setError(errorMessage);
             console.error(err);
         } finally {

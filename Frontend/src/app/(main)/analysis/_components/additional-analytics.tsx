@@ -3,6 +3,8 @@
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { ChartCard } from '@/components/analytics/ChartCard';
 import { useState, useEffect } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { API_BASE_URL } from '@/lib/config';
 
 const chartComponents = {
   line: "line",
@@ -30,33 +32,47 @@ const movedChartsConfig = [
   { id: 'lead-funnel', title: 'Lead Conversion Funnel', chartType: 'horizontal-bar', endpoint: 'lead-funnel' },
 ];
 
-export const AdditionalAnalytics = () => {
+export const AdditionalAnalytics = ({ filter }: { filter: string }) => {
   const { data, loading, error } = useAnalyticsData(movedChartsConfig);
 
   const [apiCharts, setApiCharts] = useState<ApiChart[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
-
+  
   useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const fetchCharts = async () => {
       setApiLoading(true);
       setApiError(null);
       try {
-        const response = await fetch('https://breakout-project.onrender.com/kpis/charts');
+        const url = `${API_BASE_URL}/kpis/charts?filter=${filter}`;
+            
+        const response = await fetch(url, { signal });
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Failed to fetch charts: ${response.status} ${errorText}`);
+          throw new Error(`Failed to fetch charts: ${response.status} ${errorText || response.statusText}`);
         }
         const data = await response.json();
         setApiCharts(data.charts || []);
       } catch (err) {
-        setApiError(err instanceof Error ? err.message : 'Failed to load charts.');
+        if ((err as Error).name === 'AbortError') {
+            console.log('Fetch additional charts aborted');
+            return;
+        }
+        setApiError(err instanceof Error ? err.message : 'An unknown error occurred while fetching additional charts.');
       } finally {
         setApiLoading(false);
       }
     };
+
     fetchCharts();
-  }, []);
+
+    return () => {
+      controller.abort();
+    };
+  }, [filter]);
 
   const transformData = (chart: ApiChart) => {
     return chart.x_axis.map((x, index) => ({
@@ -69,7 +85,9 @@ export const AdditionalAnalytics = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">Additional Analytics</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-900">Additional Analytics</h2>
+      </div>
       
       {(error['lead-funnel'] || apiError) && (
         <div className="bg-red-50 text-red-700 p-4 rounded-lg text-center mb-6">
@@ -111,3 +129,5 @@ export const AdditionalAnalytics = () => {
     </div>
   );
 };
+
+    
