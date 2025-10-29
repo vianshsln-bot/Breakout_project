@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import your routers from the 'routers' directory
 from backend.models.followup_model import FollowUp
 from backend.routers import branch_router, call_analysis_router, \
-call_router, consumption_router, customer_router, employee_router,\
+call_router, consumption_router, customer_router, dashboard_router, employee_router,\
 booking_router, event_router, followup_router, lead_router, linktracker_router,\
 payment_router, payu_payments_router, scripts_router, slot_router, theme_router, compute_router2,bookeo_router,\
 analysis_router, analysis_router2, elevenlabs_router
@@ -53,23 +53,25 @@ app.add_middleware(
 app.include_router(elevenlabs_router.router)
 app.include_router(payu_payments_router.router)
 app.include_router(bookeo_router.router)
-app.include_router(booking_router.router)
-app.include_router(branch_router.router)
-app.include_router(call_analysis_router.router)
-app.include_router(call_router.router)
-app.include_router(customer_router.router)
-app.include_router(consumption_router.router)
-app.include_router(employee_router.router)
 app.include_router(event_router.router)
-app.include_router(followup_router.router)
 app.include_router(lead_router.router)
-app.include_router(linktracker_router.router)
-app.include_router(payment_router.router)
-app.include_router(scripts_router.router)
-app.include_router(slot_router.router)
-app.include_router(theme_router.router)
+app.include_router(dashboard_router.router)
 app.include_router(compute_router2.router)
 app.include_router(analysis_router2.router)
+
+# app.include_router(booking_router.router)
+# app.include_router(branch_router.router)
+# app.include_router(call_analysis_router.router)
+# app.include_router(call_router.router)
+# app.include_router(customer_router.router)
+# app.include_router(consumption_router.router)
+# app.include_router(employee_router.router)
+# app.include_router(followup_router.router)
+# app.include_router(linktracker_router.router)
+# app.include_router(payment_router.router)
+# app.include_router(scripts_router.router)
+# app.include_router(slot_router.router)
+# app.include_router(theme_router.router)
 # Add other routers here as you create them...
 # e.g., app.include_router(customer_router.router)
 
