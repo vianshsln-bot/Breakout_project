@@ -275,6 +275,69 @@ def get_satisfaction(time_range: str = "all_time", tz_name: str = "Asia/Kolkata"
     nps = [round(avg_nps[d], 2) for d in dates]
     return {"dates": dates, "nps": nps}
 
+
+from collections import defaultdict
+
+# --- Customer Rating Summary ---
+def get_customer_rating_summary(time_range: str = "all_time", tz_name: str = "Asia/Kolkata"):
+    # Join call_analysis -> call and filter by call.date_time
+    start_iso, end_iso = get_time_bounds(time_range, tz_name)
+    query = (
+        supabase
+        .table("call_analysis")
+        .select("customer_rating, call!inner(date_time)")
+    )
+    query = apply_range_filter(query, "call.date_time", start_iso, end_iso)
+    rows = query.execute().data or []
+
+    counts = defaultdict(int)
+    total = 0.0
+    n = 0
+
+    for r in rows:
+        rating = r.get("customer_rating")
+        call_obj = r.get("call") or {}
+        if rating is None or not call_obj.get("date_time"):
+            continue
+        counts[int(rating)] += 1
+        total += float(rating)
+        n += 1
+
+    ratings_sorted = sorted(counts.keys())
+    counts_list = [counts[k] for k in ratings_sorted]
+    avg = round(total / n, 2) if n else 0.0
+
+    return {
+        "ratings": ratings_sorted,
+        "counts": counts_list,
+        "average": avg,
+        "total_rated": n,
+    }
+
+
+# --- Call Intent Summary ---
+def get_call_intent_summary(time_range: str = "all_time", tz_name: str = "Asia/Kolkata"):
+    # Filter directly on call by date_time, then group by call_intent
+    start_iso, end_iso = get_time_bounds(time_range, tz_name)
+    query = (
+        supabase
+        .table("call")
+        .select("call_intent, date_time")
+    )
+    query = apply_range_filter(query, "date_time", start_iso, end_iso)
+    rows = query.execute().data or []
+
+    intents = defaultdict(int)
+    for r in rows:
+        if not r.get("date_time"):
+            continue
+        intent = (r.get("call_intent") or "Unknown").strip() or "Unknown"
+        intents[intent] += 1
+
+    labels = sorted(intents.keys())
+    counts = [intents[k] for k in labels]
+    return {"intents": labels, "counts": counts}
+
 # --- 11. Combined Overview ---
 def get_overview(time_range: str = "all_time", tz_name: str = "Asia/Kolkata"):
     return {
@@ -287,4 +350,6 @@ def get_overview(time_range: str = "all_time", tz_name: str = "Asia/Kolkata"):
         "payments_status": get_payments_status(time_range, tz_name),
         "sentiment_summary": get_sentiment_summary(time_range, tz_name),
         "satisfaction": get_satisfaction(time_range, tz_name),
+        "customer_rating":get_customer_rating_summary(time_range,tz_name),
+        "call_intent": get_call_intent_summary(time_range,tz_name)
     }
