@@ -230,7 +230,22 @@ async def get_all_kpis(
                 # Chart 4: Revenue Summary
                 # -------------------
                 try:
-                    revenue_data = get_revenue_summary(tr_param(GLOBAL_TIME_FILTER["period"]))
+                    query = supabase.table("bookings").select("total_net, total_paid, start_time")
+                    if start_time and end_time:
+                        query = query.gte("start_time", start_time).lte("start_time", end_time)
+                    rows = query.execute().data or []
+
+                    if rows:
+                        total_revenue = sum(float(r.get("total_net") or 0) for r in rows)
+                        total_received = sum(float(r.get("total_paid") or 0) for r in rows)
+                        total_dues = total_revenue - total_received
+                        revenue_data = {
+                            "labels": ["Total Revenue", "Total Received", "Outstanding Dues"],
+                            "values": [total_revenue, total_received, total_dues]
+                        }
+                    else:
+                        revenue_data = {"labels": [], "values": []}
+
                     chart4 = {
                         "title": "Revenue Summary",
                         "data": revenue_data,
@@ -243,7 +258,21 @@ async def get_all_kpis(
                 # Chart 5: Payments Status Breakdown
                 # -------------------
                 try:
-                    payments_data = get_payments_status(tr_param(GLOBAL_TIME_FILTER["period"]))
+                    query = supabase.table("payment").select("payment_status, payment_amount, creation_time")
+                    if start_time and end_time:
+                        query = query.gte("creation_time", start_time).lte("creation_time", end_time)
+                    payments = query.execute().data or []
+
+                    totals = defaultdict(float)
+                    for p in payments:
+                        status = (p.get("payment_status") or "").capitalize() or "Unknown"
+                        totals[status] += float(p.get("payment_amount") or 0)
+
+                    payments_data = {
+                        "labels": list(totals.keys()),
+                        "values": list(totals.values())
+                    } if totals else {"labels": [], "values": []}
+
                     chart5 = {
                         "title": "Payments Status Breakdown",
                         "data": payments_data,
@@ -256,7 +285,22 @@ async def get_all_kpis(
                 # Chart 6: Lead Conversion Funnel
                 # -------------------
                 try:
-                    funnel_data = get_lead_funnel(tr_param(GLOBAL_TIME_FILTER["period"]))
+                    query = supabase.table("leads").select("status, created_at")
+                    if start_time and end_time:
+                        query = query.gte("created_at", start_time).lte("created_at", end_time)
+                    leads = query.execute().data or []
+
+                    funnel = defaultdict(int)
+                    for lead in leads:
+                        status = lead.get("status")
+                        if status:
+                            funnel[status] += 1
+
+                    funnel_data = {
+                        "labels": list(funnel.keys()),
+                        "values": list(funnel.values())
+                    } if funnel else {"labels": [], "values": []}
+
                     chart6 = {
                         "title": "Lead Conversion Funnel",
                         "data": funnel_data,
@@ -264,11 +308,15 @@ async def get_all_kpis(
                     }
                 except Exception as e:
                     chart6 = {"error": f"Lead Funnel error: {str(e)}"}
-        
-                # combine all
+
+                # Combine all charts
                 charts = [chart1, chart2, chart3, chart4, chart5, chart6]
+        
+
+        
         except Exception as e:
             charts = [{"error": f"Charts error: {str(e)}"}]
+        
 
         # ---------------------- FINAL COMBINED RESPONSE ----------------------
         return {
