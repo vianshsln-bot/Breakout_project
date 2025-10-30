@@ -217,7 +217,47 @@ async def get_all_kpis(
                 ai_trend = {w: round((v["ai"] / v["total"]) * 100, 2) for w, v in ai_by_week.items() if v["total"]}
                 chart3 = {"title": "AI Detection Trend Over Time", "x_axis": list(ai_trend.keys()), "y_axis": list(ai_trend.values()), "chart_type": "line"}
 
-                charts = [chart1, chart2, chart3]
+                # -------------------
+                # Chart 4: Revenue Summary
+                # -------------------
+                try:
+                    revenue_data = get_revenue_summary(tr_param(GLOBAL_TIME_FILTER["period"]))
+                    chart4 = {
+                        "title": "Revenue Summary",
+                        "data": revenue_data,
+                        "chart_type": "bar"
+                    }
+                except Exception as e:
+                    chart4 = {"error": f"Revenue Summary error: {str(e)}"}
+
+                # -------------------
+                # Chart 5: Payments Status Breakdown
+                # -------------------
+                try:
+                    payments_data = get_payments_status(tr_param(GLOBAL_TIME_FILTER["period"]))
+                    chart5 = {
+                        "title": "Payments Status Breakdown",
+                        "data": payments_data,
+                        "chart_type": "pie"
+                    }
+                except Exception as e:
+                    chart5 = {"error": f"Payments Status error: {str(e)}"}
+
+                # -------------------
+                # Chart 6: Lead Conversion Funnel
+                # -------------------
+                try:
+                    funnel_data = get_lead_funnel(tr_param(GLOBAL_TIME_FILTER["period"]))
+                    chart6 = {
+                        "title": "Lead Conversion Funnel",
+                        "data": funnel_data,
+                        "chart_type": "funnel"
+                    }
+                except Exception as e:
+                    chart6 = {"error": f"Lead Funnel error: {str(e)}"}
+        
+                # combine all
+                charts = [chart1, chart2, chart3, chart4, chart5, chart6]
         except Exception as e:
             charts = [{"error": f"Charts error: {str(e)}"}]
 
