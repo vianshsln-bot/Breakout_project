@@ -19,15 +19,19 @@ Usage:
     app.include_router(router, prefix="/elevenlabs", tags=["ElevenLabs"])
 """
 
+from datetime import UTC, datetime
 from enum import Enum
 from io import BytesIO
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, UploadFile, File
+import json
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query, Body, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import Any, Dict, Optional, List
 import os
 
+import hmac
+from hashlib import sha256
 from backend.config.eleven_labs import ElevenLabsClient, ElevenLabsError
-
+from backend.config.supabase_client import supabase
 # Initialize router
 
 router = APIRouter(prefix="/ElevenLabs", tags=["ElevenLabs"])
@@ -864,6 +868,243 @@ async def delete_secret(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
+
+
+# ================= POST CALL WEBHOOK UPDATES ===================================
+
+# ===================================
+# WEBHOOK PAYLOAD STRUCTURE
+# ===================================
+# {
+#   "type": "conversation.ended",
+#   "event_timestamp": "2025-10-26T13:52:14.000Z",
+#   "data": {
+#     "conversation_id": "conv_7201k8gba9swf6brhqps1ymdn0wh",
+#     "agent_id": "agent_1401k8ds8fene6b8sxff74yv7tbg",
+#     "status": "done",
+#     "transcript": [...],
+#     "analysis": {
+#       "evaluation_criteria_results": {},
+#       "data_collection_results": {},
+#       "call_successful": "success",
+#       "transcript_summary": "..."
+#     },
+#     "metadata": {...}
+#   }
+# }
+
+
+def extract_transcript_text(transcript_array: list) -> str:
+    """Combine all transcript messages into single string"""
+    try:
+        messages = []
+        for turn in transcript_array:
+            if turn.get("message"):
+                messages.append(turn["message"])
+        return " ".join(messages)
+    except Exception as e:
+        print(f"❌ Error extracting transcript: {e}")
+        return ""
+
+
+def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract call analysis data from ElevenLabs webhook payload
+    Assumes analysis.evaluation_criteria_results and data_collection_results will be populated
+    For now, use defaults and transcript summary
+    """
+    try:
+        data = webhook_payload.get("data", {})
+        analysis = data.get("analysis", {})
+        
+        # Get evaluation results (from your 6 criteria)
+        eval_results = analysis.get("evaluation_criteria_results", {})
+        
+        # Get data collection results (from your 6 data fields)
+        collected_data = analysis.get("data_collection_results", {})
+        
+        # Extract transcript
+        transcript_array = data.get("transcript", [])
+        transcript_text = extract_transcript_text(transcript_array)
+        
+        # MAPPING: evaluation_criteria_results → database fields
+        # Based on: booking_successful, human_transfer_needed, ai_detected_by_customer, 
+        #           inquiry_resolved, conversation_on_topic, conversation_completed
+        
+        booking_successful_eval = eval_results.get("booking_successful", {})
+        booking_success = (booking_successful_eval.get("result") == "success")
+        
+        human_transfer_eval = eval_results.get("human_transfer_needed", {})
+        human_agent_flag = (human_transfer_eval.get("result") == "failure")  # failure = transfer needed
+        human_intervention_reason = ""
+        if human_agent_flag:
+            human_intervention_reason = human_transfer_eval.get("rationale", "")[:100]
+        
+        ai_detected_eval = eval_results.get("ai_detected_by_customer", {})
+        ai_detected_flag = (ai_detected_eval.get("result") == "failure")  # failure = detected
+        
+        inquiry_resolved_eval = eval_results.get("inquiry_resolved", {})
+        product_inquiry_resolved = (inquiry_resolved_eval.get("result") == "success")
+        
+        conversation_topic_eval = eval_results.get("out_os_scope", {})
+        out_of_scope = (conversation_topic_eval.get("result") == "failure")  # failure = out of scope
+        
+        conversation_completed_eval = eval_results.get("conversation_completed", {})
+        failed_conversation_reason = ""
+        if conversation_completed_eval.get("result") == "failure":
+            failed_conversation_reason = conversation_completed_eval.get("rationale", "")[:100]
+        
+        # MAPPING: data_collection_results → database fields
+        # From your 6 data fields: customer_rating, sentiment_score, emotional_score, summary, 
+        #                           human_intervention_reason (data override), failed_conversation_reason (data override)
+        
+        customer_rating = collected_data.get("customer_rating", 3)
+        sentiment_score = collected_data.get("sentiment_score", 0.5)
+        emotional_score = collected_data.get("emotional_score", 0.5)
+
+        call_duration = data.get("metadata").get("call_duration_secs")
+        cost = data.get("metadata").get("cost")
+        summary = analysis.get("transcript_summary", "")
+        
+        # Data collection can override evaluation results for reasons
+        if collected_data.get("human_intervention_reason"):
+            human_intervention_reason = collected_data.get("human_intervention_reason", "")
+        if collected_data.get("failed_conversation_reason"):
+            failed_conversation_reason = collected_data.get("failed_conversation_reason", "")
+        
+        return {
+            "conv_id": data.get("conversation_id"),
+            "customer_rating": customer_rating,
+            "human_agent_flag": human_agent_flag,
+            "ai_detected_flag": ai_detected_flag,
+            "summary": summary,
+            "sentiment_score": sentiment_score,
+            "emotional_score": emotional_score,
+            "human_intervention_reason": human_intervention_reason,
+            "failed_conversation_reason": failed_conversation_reason,
+            "out_of_scope": out_of_scope,
+            "transcript": transcript_text,
+            "booking_successful": booking_success,
+            "product_inquiry_resolved": product_inquiry_resolved,
+            "agent_id": data.get("agent_id"),
+            "duration": call_duration,
+            "cost" : cost,
+            "status": data.get("status"),
+        }
+        
+    except Exception as e:
+        print(f"❌ Error extracting call analysis: {str(e)}")
+        return {}
+
+
+@router.post("/elevenlabs")
+async def elevenlabs_webhook(request: Request):
+    """
+    Handle ElevenLabs post-call webhook
+    
+    Payload structure:
+    {
+        "type": "conversation.ended",
+        "event_timestamp": "...",
+        "data": { ... webhook data ... }
+    }
+    """
+    try:
+        
+        # Parse request
+        webhook_payload = await request.json()
+        
+        # Log compact version (avoid huge logs)
+        print("\n" + "="*80)
+        print("🔔 ELEVENLABS WEBHOOK RECEIVED")
+        print("="*80)
+        print(f"Type: {webhook_payload.get('type')}")
+        print(f"Timestamp: {webhook_payload.get('event_timestamp')}")
+        print(f"Conversation ID: {webhook_payload.get('data', {}).get('conversation_id')}")
+        print("="*80 + "\n")
+        
+        # Extract the 'data' field (your actual conversation payload)
+        data = webhook_payload.get("data", {})
+        if not data:
+            return {"status": "error", "message": "Missing 'data' field in webhook"}
+        
+        # Extract call analysis
+        call_analysis = extract_call_analysis(webhook_payload)
+        
+        if not call_analysis:
+            return {"status": "error", "message": "Failed to extract call analysis"}
+        
+        conv_id = call_analysis["conv_id"]
+        
+        # Step 1: Check if already exists
+        existing = (
+            supabase.table("call")
+            .select("conv_id")
+            .eq("conv_id", conv_id)
+            .execute()
+        )
+        
+        if existing.data:
+            print(f"⏭️ Conversation {conv_id} already processed. Skipping...")
+            return {
+                "status": "skipped",
+                "conversation_id": conv_id,
+                "reason": "Already exists in database"
+            }
+        
+        # Step 2: Save to call table
+        call_response = supabase.table("call").insert({
+            "conv_id": conv_id,
+            "call_intent": call_analysis.get("summary", "")[:100],
+            "transcript": call_analysis.get("transcript", ""),
+            "date_time": datetime.now(UTC).isoformat()
+        }).execute()
+        
+        if not call_response.data:
+            print(f"❌ Failed to save call: {conv_id}")
+            return {"status": "error", "message": "Failed to save call"}
+        
+        call_id = call_response.data[0]["id"]
+        print(f"✅ Call saved: {call_id}")
+        
+        # Step 3: Save to call_analysis table
+        analysis_response = supabase.table("call_analysis").insert({
+            "conv_id": conv_id,
+            "customer_rating": call_analysis.get("customer_rating", 3),
+            "human_agent_flag": call_analysis.get("human_agent_flag", False),
+            "ai_detect_flag": call_analysis.get("ai_detected_flag", False),
+            "summary": call_analysis.get("summary", ""),
+            "sentiment_score": call_analysis.get("sentiment_score", 0.5),
+            "emotional_score": call_analysis.get("emotional_score", 0.5),
+            "human_intervention_reason": call_analysis.get("human_intervention_reason", ""),
+            "failed_conversation_reason": call_analysis.get("failed_conversation_reason", ""),
+            "out_of_scope": call_analysis.get("out_of_scope", False)
+        }).execute()
+        
+        if not analysis_response.data:
+            print(f"❌ Failed to save call analysis: {conv_id}")
+            return {"status": "error", "message": "Failed to save call analysis"}
+        
+        analysis_id = analysis_response.data[0]["id"]
+        print(f"✅ Call analysis saved: {analysis_id}")
+        
+        return {
+            "status": "success",
+            "conversation_id": conv_id,
+            "call_id": call_id,
+            "analysis_id": analysis_id,
+            "summary": call_analysis.get("summary", "")[:50]
+        }
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in webhook: {str(e)}")
+        return {"status": "error", "message": "Invalid JSON"}
+        
+    except Exception as e:
+        print(f"❌ Error processing webhook: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+
 # ================== HEALTH CHECK ==================
 
 @router.get(
@@ -891,3 +1132,6 @@ async def health_check(client: ElevenLabsClient = Depends(get_client)):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"ElevenLabs service unavailable: {str(e)}"
         )
+    
+
+

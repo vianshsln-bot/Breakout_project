@@ -15,6 +15,9 @@ Usage:
     agents = client.list_agents()
 """
 
+from hashlib import sha256
+import hmac
+import time
 from typing import Any, Dict, Optional, List, BinaryIO
 import os
 from dotenv import load_dotenv
@@ -60,7 +63,7 @@ class ElevenLabsClient:
         """
         # Load environment variables from keys.env if exists
         load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'keys.env'))
-        
+        self.post_call_secret = os.getenv("POST_CALL_WEBHOOK_SECRET")
         self.api_key = api_key or os.getenv("ELEVENLABS_API_KEY")
         if not self.api_key:
             raise ValueError(
@@ -850,6 +853,102 @@ class ElevenLabsClient:
             self.client.conversational_ai.secrets.delete(secret_id=secret_id)
         except Exception as e:
             self._handle_error(e, f"deleting secret {secret_id}")
+
+# ===== POST CALL WEBHOOOK CREATION ==========================
+
+    def verify_elevenlabs_signature(
+        self,
+        payload_body: bytes,
+        signature_header: str,
+        timestamp_tolerance_seconds: int = 30 * 60  # 30 minutes default
+    ) -> bool:
+        """
+        Verify ElevenLabs webhook signature and timestamp.
+        
+        Args:
+            payload_body: Raw request body as bytes
+            signature_header: Value from 'elevenlabs-signature' header
+                             Format: "t=<timestamp>,v0=<signature>"
+            secret: Secret key (your ElevenLabs API key)
+            timestamp_tolerance_seconds: Max age of request in seconds (default 30 mins)
+        
+        Returns:
+            True if signature is valid and timestamp is recent, False otherwise
+        
+        Raises:
+            ValueError: If signature header format is invalid
+        """
+        try:
+            # Step 1: Parse signature header
+            # Format: "t=<timestamp>,v0=<hmac_signature>"
+            parts = signature_header.split(",")
+            
+            if len(parts) != 2:
+                print(f"❌ Invalid signature header format: {signature_header}")
+                return False
+            
+            # Extract timestamp
+            timestamp_part = parts[0]  # "t=1234567890"
+            if not timestamp_part.startswith("t="):
+                print(f"❌ Invalid timestamp format: {timestamp_part}")
+                return False
+            timestamp = timestamp_part[2:]
+            
+            # Extract HMAC signature
+            signature_part = parts[1]  # "v0=abc123..."
+            if not signature_part.startswith("v0="):
+                print(f"❌ Invalid signature format: {signature_part}")
+                return False
+            hmac_signature = signature_part
+            
+            # Step 2: Validate timestamp (prevent replay attacks)
+            try:
+                timestamp_int = int(timestamp)
+            except ValueError:
+                print(f"❌ Timestamp is not a valid integer: {timestamp}")
+                return False
+            
+            current_time = int(time.time())
+            tolerance_threshold = current_time - timestamp_tolerance_seconds
+            
+            if timestamp_int < tolerance_threshold:
+                print(f"❌ Timestamp too old: {timestamp} (current: {current_time}, tolerance: {tolerance_threshold})")
+                return False
+            
+            # Timestamp in future (more than 1 minute) - also reject
+            if timestamp_int > current_time + 60:
+                print(f"❌ Timestamp in future: {timestamp}")
+                return False
+            
+            # Step 3: Calculate HMAC signature
+            # Format: "<timestamp>.<payload>"
+            full_payload_to_sign = f"{timestamp}.{payload_body.decode('utf-8')}"
+            
+            mac = hmac.new(
+                key=self.post_call_secret.encode("utf-8"),
+                msg=full_payload_to_sign.encode("utf-8"),
+                digestmod=sha256,
+            )
+            
+            # Create expected signature in format "v0=<hex>"
+            expected_digest = "v0=" + mac.hexdigest()
+            
+            # Step 4: Compare signatures (use constant-time comparison to prevent timing attacks)
+            if not hmac.compare_digest(hmac_signature, expected_digest):
+                print(f"❌ Signature mismatch")
+                print(f"   Expected: {expected_digest}")
+                print(f"   Received: {hmac_signature}")
+                return False
+            
+            print(f"✅ Webhook signature verified successfully")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error verifying signature: {str(e)}")
+            return False
+
+
+
 
 
 # ================== TESTING ==================

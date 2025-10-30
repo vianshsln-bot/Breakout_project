@@ -1,14 +1,31 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from typing import List
 from postgrest import APIError
 
 from backend.services import call_analysis_service
 from backend.models.call_analysis_model import CallAnalysis, CallAnalysisCreate, CallAnalysisUpdate
 
+import json
+
 router = APIRouter(
     prefix="/call-analysis",
     tags=["Call Analysis"]
 )
+
+
+# FastAPI endpoint to capture the real webhook
+@router.post("/webhook/elevenlabs")
+async def elevenlabs_webhook(request: Request):
+    payload = await request.json()
+    
+    # Print the ENTIRE payload
+    print(json.dumps(payload, indent=2))
+    
+    # Save for inspection
+    with open('webhook_payload_received.json', 'w') as f:
+        json.dump(payload, f, indent=2)
+    
+    return {"status": "received"}
 
 
 
