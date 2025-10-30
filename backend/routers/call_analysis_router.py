@@ -13,19 +13,19 @@ router = APIRouter(
 )
 
 
-# FastAPI endpoint to capture the real webhook
-@router.post("/webhook/elevenlabs")
-async def elevenlabs_webhook(request: Request):
-    payload = await request.json()
+# # FastAPI endpoint to capture the real webhook
+# @router.post("/webhook/elevenlabs")
+# async def elevenlabs_webhook(request: Request):
+#     payload = await request.json()
     
-    # Print the ENTIRE payload
-    print(json.dumps(payload, indent=2))
+#     # Print the ENTIRE payload
+#     print(json.dumps(payload, indent=2))
     
-    # Save for inspection
-    with open('webhook_payload_received.json', 'w') as f:
-        json.dump(payload, f, indent=2)
+#     # Save for inspection
+#     with open('webhook_payload_received.json', 'w') as f:
+#         json.dump(payload, f, indent=2)
     
-    return {"status": "received"}
+#     return {"status": "received"}
 
 
 
