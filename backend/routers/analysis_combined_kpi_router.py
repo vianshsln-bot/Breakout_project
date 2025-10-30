@@ -8,7 +8,8 @@ from collections import defaultdict
 from backend.services.dashboard_service import (
     get_lead_funnel,
     get_revenue_summary,
-    get_payments_status
+    get_payments_status,
+    get_time_bounds
 )
 
 
