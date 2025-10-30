@@ -7,7 +7,6 @@ from backend.services.dashboard_service import (
     get_lead_funnel,
     get_lead_sources,
     get_customer_growth,
-    get_customer_segments,
     get_revenue_summary,
     get_payments_status,
     get_sentiment_summary,
