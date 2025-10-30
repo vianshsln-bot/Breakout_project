@@ -332,8 +332,11 @@ def get_call_intent_summary(time_range: str = "all_time", tz_name: str = "Asia/K
         intent = (r.get("call_intent") or "Unknown").strip() or "Unknown"
         intents[intent] += 1
 
-    labels = sorted(intents.keys())
-    counts = [intents[k] for k in labels]
+    #Sorting top 5
+    top_5 = sorted(intents.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    labels = [k for k, _ in top_5]
+    counts = [v for _, v in top_5]
     return {"intents": labels, "counts": counts}
 
 # --- 11. Combined Overview ---

@@ -7,7 +7,7 @@ from backend.routers import branch_router, call_analysis_router, \
 call_router, consumption_router, customer_router, dashboard_router, employee_router,\
 booking_router, event_router, followup_router, lead_router, linktracker_router,\
 payment_router, payu_payments_router, scripts_router, slot_router, theme_router, compute_router2,bookeo_router,\
-analysis_router, analysis_router2, elevenlabs_router
+analysis_router, analysis_router2, elevenlabs_router,analysis_combined_kpi_router
 
 
 
@@ -57,7 +57,7 @@ app.include_router(event_router.router)
 app.include_router(lead_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(compute_router2.router)
-app.include_router(analysis_router2.router)
+app.include_router(analysis_combined_kpi_router.router)
 app.include_router(booking_router.router)
 app.include_router(branch_router.router)
 app.include_router(call_analysis_router.router)
