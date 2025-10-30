@@ -76,12 +76,12 @@ def customer_growth(time_range: DateRange = Query(default=DateRange.all_time)):
 #    except Exception as e:
 #        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/payments-status")
-def payments_status(time_range: DateRange = Query(default=DateRange.all_time)):
-    try:
-        return get_payments_status(tr_param(time_range))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+##@router.get("/payments-status")
+#def payments_status(time_range: DateRange = Query(default=DateRange.all_time)):
+#    try:
+#        return get_payments_status(tr_param(time_range))
+#    except Exception as e:
+#        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/sentiment-summary")
 def sentiment_summary(time_range: DateRange = Query(default=DateRange.all_time)):
