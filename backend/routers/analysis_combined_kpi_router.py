@@ -5,6 +5,12 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import timedelta, datetime
 from backend.config.supabase_client import supabase
 from collections import defaultdict
+from backend.services.dashboard_service import (
+    get_lead_funnel,
+    get_revenue_summary,
+    get_payments_status
+)
+
 
 router = APIRouter(prefix="/kpis", tags=["KPIs"])
 
