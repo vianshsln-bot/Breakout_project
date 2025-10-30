@@ -15,6 +15,8 @@ from backend.services.dashboard_service import (
 
 router = APIRouter(prefix="/kpis", tags=["KPIs"])
 
+
+ALLOWED_RANGES = {"today", "last_week", "last_month", "all_time"}
 # ------------------------------------------------------------
 # ⏱️ GLOBAL TIME FILTER HANDLING
 # ------------------------------------------------------------
