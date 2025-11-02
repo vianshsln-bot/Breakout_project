@@ -997,7 +997,7 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.post("/elevenlabs/post-call")
-async def elevenlabs_webhook(request: Request):
+async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depends(get_client)):
     """
     Handle ElevenLabs post-call webhook
     
@@ -1022,7 +1022,7 @@ async def elevenlabs_webhook(request: Request):
             return {"status": "error", "message":"Invalid request : Cannot authorize"}
 
         # Step 3: Verify signature (with raw bytes!)
-        if not ElevenLabsClient.verify_elevenlabs_signature(
+        if not client.verify_elevenlabs_signature(
             payload_body=payload_body,       # ✅ Raw bytes
             signature_header=signature_header
         ):

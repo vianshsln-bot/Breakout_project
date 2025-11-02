@@ -245,6 +245,15 @@ def cancel_booking(booking_id: str, notify_customer: bool = True, lang: str = "e
         raise HTTPException(status_code=status, detail="Failed to cancel booking")
 
 
+@router.get("/customers/{customer_id}")
+def get_customer_bookings(customer_id:str,bookeo: BookeoAPI = Depends(get_bookeo_client)):
+    try:
+        bookeo.get_customer_bookings(customer_id)
+    except requests.RequestException as e:
+        status = getattr(getattr(e, "response", None), "status_code", 502)
+        raise HTTPException(status_code=status, detail="Failed to retrieve bookings")
+
+
 from bs4 import BeautifulSoup
 import html
 def clean_description(raw_html):
