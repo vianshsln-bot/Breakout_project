@@ -1,6 +1,10 @@
 from enum import Enum
 from fastapi import APIRouter, HTTPException, Query
-
+from datetime import datetime, timedelta
+from typing import Optional, Tuple, Dict, Any
+from enum import Enum
+from fastapi import APIRouter, HTTPException, Query, Depends
+from supabase_client import supabase
 from backend.services.dashboard_service import (
     get_overview
 )
@@ -101,9 +105,24 @@ def tr_param(param: DateRange = Query(default=DateRange.all_time)) -> str:
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/overview")
-def overview(time_range: DateRange = Query(default=DateRange.all_time)):
+# ------------------------------------------------------------
+# 6️⃣ ROUTER ENDPOINT WITH DROPDOWN FILTER
+# ------------------------------------------------------------
+@app.get("/overview", response_model=Dict[str, Any])
+async def get_dashboard_overview(
+    filter: TimePeriod = Query(default=TimePeriod.all_time, description="Select time filter: today, last_week, last_month, all_time")
+):
+    """Dashboard Overview with dropdown filter support."""
+    start_time, end_time = get_time_bounds(filter)
+
     try:
-        return get_overview(tr_param(time_range))
+        overview_data = get_overview(filter)
+
+        return {
+            "filters": {"filter": filter, "start_time": start_time, "end_time": end_time},
+            "overview": overview_data
+        }
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error fetching dashboard overview: {str(e)}")
+
