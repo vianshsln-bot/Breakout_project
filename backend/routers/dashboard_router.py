@@ -4,9 +4,11 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple, Dict, Any
 from enum import Enum
 from fastapi import APIRouter, HTTPException, Query, Depends
-from supabase_client import supabase
+from backend.config.supabase_client import supabase
 from backend.services.dashboard_service import (
-    get_overview
+    TimePeriod,
+    get_overview,
+    get_time_bounds
 )
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
@@ -108,7 +110,7 @@ def tr_param(param: DateRange = Query(default=DateRange.all_time)) -> str:
 # ------------------------------------------------------------
 # 6️⃣ ROUTER ENDPOINT WITH DROPDOWN FILTER
 # ------------------------------------------------------------
-@app.get("/overview", response_model=Dict[str, Any])
+@router.get("/overview", response_model=Dict[str, Any])
 async def get_dashboard_overview(
     filter: TimePeriod = Query(default=TimePeriod.all_time, description="Select time filter: today, last_week, last_month, all_time")
 ):
