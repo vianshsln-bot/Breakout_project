@@ -1104,8 +1104,8 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
             print(f"❌ Failed to save call: {conv_id}")
             return {"status": "error", "message": "Failed to save call"}
         
-        call_id = call_response.data[0]["id"]
-        print(f"✅ Call saved: {call_id}")
+        # call_id = call_response.data[0]["id"]
+        # print(f"✅ Call saved: {call_id}")
         
         # Step 3: Save to call_analysis table
         # Ensure scores are properly formatted as floats
@@ -1142,7 +1142,6 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         return {
             "status": "success",
             "conversation_id": conv_id,
-            "call_id": call_id,
             "analysis_id": analysis_id,
             "summary": call_analysis.get("summary", "")[:50],
             "customer_type": call_analysis.get("customer_type"),
