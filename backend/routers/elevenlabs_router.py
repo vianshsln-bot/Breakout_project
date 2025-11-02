@@ -894,15 +894,16 @@ async def get_dashboard_settings(
 #   }
 # }
 
-
 def extract_transcript_text(transcript_array: list) -> str:
     """Combine all transcript messages into single string"""
     try:
         messages = []
         for turn in transcript_array:
             if turn.get("message"):
-                messages.append(turn["message"])
-        return " ".join(messages)
+                role = turn.get("role", "unknown")
+                message = turn.get("message")
+                messages.append(f"{role}: {message}")
+        return "\n".join(messages)
     except Exception as e:
         print(f"❌ Error extracting transcript: {e}")
         return ""
@@ -911,17 +912,16 @@ def extract_transcript_text(transcript_array: list) -> str:
 def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Extract call analysis data from ElevenLabs webhook payload
-    Assumes analysis.evaluation_criteria_results and data_collection_results will be populated
-    For now, use defaults and transcript summary
     """
     try:
         data = webhook_payload.get("data", {})
         analysis = data.get("analysis", {})
+        metadata = data.get("metadata", {})
         
         # Get evaluation results (from your 6 criteria)
         eval_results = analysis.get("evaluation_criteria_results", {})
         
-        # Get data collection results (from your 6 data fields)
+        # Get data collection results (from your 3 data fields)
         collected_data = analysis.get("data_collection_results", {})
         
         # Extract transcript
@@ -929,9 +929,6 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
         transcript_text = extract_transcript_text(transcript_array)
         
         # MAPPING: evaluation_criteria_results → database fields
-        # Based on: booking_successful, human_transfer_needed, ai_detected_by_customer, 
-        #           inquiry_resolved, conversation_on_topic, conversation_completed
-        
         booking_successful_eval = eval_results.get("booking_successful", {})
         booking_success = (booking_successful_eval.get("result") == "success")
         
@@ -947,7 +944,7 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
         inquiry_resolved_eval = eval_results.get("inquiry_resolved", {})
         product_inquiry_resolved = (inquiry_resolved_eval.get("result") == "success")
         
-        conversation_topic_eval = eval_results.get("out_os_scope", {})
+        conversation_topic_eval = eval_results.get("out_of_scope", {})
         out_of_scope = (conversation_topic_eval.get("result") == "failure")  # failure = out of scope
         
         conversation_completed_eval = eval_results.get("conversation_completed", {})
@@ -956,22 +953,38 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
             failed_conversation_reason = conversation_completed_eval.get("rationale", "")[:100]
         
         # MAPPING: data_collection_results → database fields
-        # From your 6 data fields: customer_rating, sentiment_score, emotional_score, summary, 
-        #                           human_intervention_reason (data override), failed_conversation_reason (data override)
+        # Structure: { "data_collection_id": { "value": ..., "rationale": ... } }
         
-        customer_rating = collected_data.get("customer_rating", 3)
-        sentiment_score = collected_data.get("sentiment_score", 0.5)
-        emotional_score = collected_data.get("emotional_score", 0.5)
-
-        call_duration = data.get("metadata").get("call_duration_secs")
-        cost = data.get("metadata").get("cost")
-        summary = analysis.get("transcript_summary", "")
+        sentiment_data = collected_data.get("sentiment_score", {})
+        sentiment_score = sentiment_data.get("value")
         
-        # Data collection can override evaluation results for reasons
-        if collected_data.get("human_intervention_reason"):
-            human_intervention_reason = collected_data.get("human_intervention_reason", "")
-        if collected_data.get("failed_conversation_reason"):
-            failed_conversation_reason = collected_data.get("failed_conversation_reason", "")
+        customer_rating_data = collected_data.get("customer_satisfaction_rating", {})
+        customer_rating = customer_rating_data.get("value")
+        
+        customer_type_data = collected_data.get("customer_type", {})
+        customer_type = customer_type_data.get("value")  # "NEW" or "RETURNING" or None
+        
+        # Metadata - safe extraction with defaults
+        call_duration = metadata.get("call_duration_secs", 0) if metadata else 0
+        cost = metadata.get("cost", 0) if metadata else 0
+        summary = analysis.get("transcript_summary", "") if analysis else ""
+        
+        # Safe normalization for sentiment_score (handle None/null)
+        if sentiment_score is not None and isinstance(sentiment_score, (int, float)):
+            if 1 <= sentiment_score <= 5:
+                sentiment_score_normalized = (sentiment_score - 1) / 4  # Convert 1-5 to 0-1
+                emotional_score = sentiment_score_normalized
+            else:
+                sentiment_score_normalized = 0.5
+                emotional_score = 0.5
+        else:
+            # Handle null/None from payload
+            sentiment_score_normalized = 0.5
+            emotional_score = 0.5
+        
+        # Safe normalization for customer_rating (handle None/null)
+        if customer_rating is None or not isinstance(customer_rating, (int, float)):
+            customer_rating = 3  # Default neutral
         
         return {
             "conv_id": data.get("conversation_id"),
@@ -979,7 +992,7 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
             "human_agent_flag": human_agent_flag,
             "ai_detected_flag": ai_detected_flag,
             "summary": summary,
-            "sentiment_score": sentiment_score,
+            "sentiment_score": sentiment_score_normalized,
             "emotional_score": emotional_score,
             "human_intervention_reason": human_intervention_reason,
             "failed_conversation_reason": failed_conversation_reason,
@@ -989,14 +1002,16 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
             "product_inquiry_resolved": product_inquiry_resolved,
             "agent_id": data.get("agent_id"),
             "duration": call_duration,
-            "cost" : cost,
+            "cost": cost,
             "status": data.get("status"),
+            "customer_type": customer_type,
         }
         
     except Exception as e:
         print(f"❌ Error extracting call analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {}
-
 
 @router.post("/elevenlabs/post-call")
 async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depends(get_client)):
@@ -1005,15 +1020,12 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
     
     Payload structure:
     {
-        "type": "conversation.ended",
+        "type": "post_call_transcription",
         "event_timestamp": "...",
         "data": { ... webhook data ... }
     }
     """
     try:
-        
-            # Parse request
-
         # Step 1: Get RAW body
         payload_body = await request.body()  # bytes
 
@@ -1021,20 +1033,22 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         signature_header = request.headers.get("elevenlabs-signature")
 
         if not signature_header:
-            return {"status": "error", "message":"Invalid request : Cannot authorize"}
+            return {"status": "error", "message": "Invalid request: Cannot authorize"}
 
         # Step 3: Verify signature (with raw bytes!)
         if not client.verify_elevenlabs_signature(
-            payload_body=payload_body,       # ✅ Raw bytes
+            payload_body=payload_body,
             signature_header=signature_header
         ):
             return {"status": "error", "message": "Invalid signature"}
 
         # Step 4: NOW parse JSON
         webhook_payload = json.loads(payload_body)
-        requests.post("https://webhook.site/cd1995bf-d2c7-4f5d-88f7-0d649c83e07e", json=webhook_payload) 
-        # print(payload_body)
-            # Log compact version (avoid huge logs)
+        
+        # Optional: Forward to webhook.site for debugging
+        requests.post("https://webhook.site/cd1995bf-d2c7-4f5d-88f7-0d649c83e07e", json=webhook_payload)
+        
+        # Log compact version
         print("\n" + "="*80)
         print("🔔 ELEVENLABS WEBHOOK RECEIVED")
         print("="*80)
@@ -1043,9 +1057,9 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         print(f"Conversation ID: {webhook_payload.get('data', {}).get('conversation_id')}")
         print("="*80 + "\n")
         
-        # Extract the 'data' field (your actual conversation payload)
+        # Extract the 'data' field
         data = webhook_payload.get("data", {})
-        # print(data)
+        
         if not data:
             return {"status": "error", "message": "Missing 'data' field in webhook"}
         
@@ -1114,7 +1128,8 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
             "conversation_id": conv_id,
             "call_id": call_id,
             "analysis_id": analysis_id,
-            "summary": call_analysis.get("summary", "")[:50]
+            "summary": call_analysis.get("summary", "")[:50],
+            "customer_type": call_analysis.get("customer_type")
         }
         
     except json.JSONDecodeError as e:
@@ -1123,6 +1138,8 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         
     except Exception as e:
         print(f"❌ Error processing webhook: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 

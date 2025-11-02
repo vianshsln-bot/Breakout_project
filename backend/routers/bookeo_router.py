@@ -245,13 +245,67 @@ def cancel_booking(booking_id: str, notify_customer: bool = True, lang: str = "e
         raise HTTPException(status_code=status, detail="Failed to cancel booking")
 
 
-@router.get("/customers/{customer_id}")
-def get_customer_bookings(customer_id:str,bookeo: BookeoAPI = Depends(get_bookeo_client)):
+@router.get("/customers/{customer_id}/bookings", response_model=Dict)
+async def get_customer_bookings(
+    customer_id: str,
+    begin_date: Optional[str] = Query(None, description="Only bookings on or after this date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Only bookings on or before this date (YYYY-MM-DD)"),
+    expand_participants: bool = Query(False, description="Include full participant details"),
+    items_per_page: int = Query(50, le=100, description="Number of items per page (max 100)"),
+    page_navigation_token: Optional[str] = Query(None, description="Token for page navigation"),
+    page_number: int = Query(1, ge=1, description="Page number")
+):
+    """
+    Retrieve a customer's bookings from Bookeo.
+    
+    - **customer_id**: The customer ID (required)
+    - **begin_date**: Optional start date filter (YYYY-MM-DD)
+    - **end_date**: Optional end date filter (YYYY-MM-DD)
+    - **expand_participants**: Include full participant details
+    - **items_per_page**: Results per page (max 100)
+    - **page_navigation_token**: Token for pagination
+    - **page_number**: Page number to retrieve
+    """
     try:
-        bookeo.get_customer_bookings(customer_id)
-    except requests.RequestException as e:
-        status = getattr(getattr(e, "response", None), "status_code", 502)
-        raise HTTPException(status_code=status, detail="Failed to retrieve bookings")
+        bookeo_client = BookeoAPI()
+        
+        result = bookeo_client.get_customer_bookings(
+            customer_id=customer_id,
+            begin_date=begin_date,
+            end_date=end_date,
+            expand_participants=expand_participants,
+            items_per_page=items_per_page,
+            page_navigation_token=page_navigation_token,
+            page_number=page_number
+        )
+        
+        if result.get("success"):
+            return {
+                "success": True,
+                "data": result.get("data"),
+                "message": f"Successfully retrieved bookings for customer {customer_id}"
+            }
+        else:
+            raise HTTPException(
+                status_code=result.get("httpStatus") or result.get("status") or 500,
+                detail={
+                    "message": result.get("message"),
+                    "errorId": result.get("errorId"),
+                    "source": result.get("source")
+                }
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": f"Failed to retrieve customer bookings: {str(e)}",
+                "source": "get_customer_bookings_router"
+            }
+        )
+
 
 
 from bs4 import BeautifulSoup

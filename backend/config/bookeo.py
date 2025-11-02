@@ -168,6 +168,66 @@ class BookeoAPI:
             "errorId": error_id,
             "status": status_code,
         }
+    def get_customer_bookings(
+    self,
+    customer_id: str,
+    begin_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    expand_participants: bool = False,
+    items_per_page: int = 50,
+    page_navigation_token: Optional[str] = None,
+    page_number: int = 1
+    ) -> Dict:
+        """
+        Retrieve a customer's bookings.
+
+        Args:
+            customer_id (str): The customer ID (required)
+            begin_date (str, optional): If specified, only bookings on or after this date will be included (format: YYYY-MM-DD)
+            end_date (str, optional): If specified, only bookings on or before this date will be included (format: YYYY-MM-DD)
+            expand_participants (bool): If true, full details of the participants are included (default: False)
+            items_per_page (int): Number of items per page, max 100 (default: 50)
+            page_navigation_token (str, optional): Token for page navigation
+            page_number (int): Page number (default: 1)
+
+        Returns:
+            dict: Customer's bookings data
+
+        Raises:
+            requests.RequestException: If API request fails
+        """
+        try:
+            endpoint = f"/customers/{customer_id}/bookings"
+
+            # Build query parameters
+            params = {}
+
+            if begin_date:
+                params['beginDate'] = begin_date
+            if end_date:
+                params['endDate'] = end_date
+            if expand_participants:
+                params['expandParticipants'] = expand_participants
+            if items_per_page and items_per_page <= 100:
+                params['itemsPerPage'] = items_per_page
+            if page_navigation_token:
+                params['pageNavigationToken'] = page_navigation_token
+            if page_number:
+                params['pageNumber'] = page_number
+
+            result = self._make_request('GET', endpoint, params=params)
+
+            self.logger.info(f"Successfully retrieved bookings for customer {customer_id}")
+            return {
+                "success": True,
+                "data": result,
+                "source": "get_customer_bookings"
+            }
+
+        except Exception as err:
+            self.logger.error(f"Failed to retrieve customer bookings: {err}")
+            return self._extract_api_error(err, "get_customer_bookings")
+
 
     # ==================== AVAILABILITY METHODS ====================
 
@@ -410,6 +470,8 @@ class BookeoAPI:
         """
         params = {'lang': lang}
         return self._make_request('PUT', f'/customers/{customer_id}', params=params, data=customer_data)
+    
+
 
     # ==================== SETTINGS & UTILITY METHODS ====================
 
