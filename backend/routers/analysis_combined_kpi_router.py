@@ -155,26 +155,25 @@ async def get_all_kpis(
         # ---------------------- LLM KPI ----------------------
         llm_kpis = []
         try:
-            query = supabase.table("call").select("conv_id, date_time")
-            if start_time and end_time:
-                query = query.gte("date_time", start_time).lte("date_time", end_time)
-            call_resp = query.execute()
-            conv_ids = [r["conv_id"] for r in call_resp.data or []]
-            if conv_ids:
-                resp = supabase.table("call_analysis").select("*").in_("conv_id", conv_ids).execute()
-                data = resp.data or []
-                total = len(data)
-                ai_calls = sum(1 for d in data if d.get("ai_detect_flag"))
-                human_calls = sum(1 for d in data if d.get("human_agent_flag"))
-                out_scope = sum(1 for d in data if d.get("out_of_scope"))
-                ai_success = sum(1 for d in data if d.get("ai_detect_flag") and not d.get("failed_conversion_reason"))
+            resp = supabase.rpc(
+                "get_llm_kpis",
+                {
+                    "p_start_time": start_time,
+                    "p_end_time": end_time
+                }
+            ).execute()
 
+            if resp.data:
+                d = resp.data[0]
                 llm_kpis = [
-                    {"name": "AI Detection Rate", "value": round((ai_calls / total) * 100, 2) if total else 0},
-                    {"name": "Human Agent Involvement Rate", "value": round((human_calls / total) * 100, 2) if total else 0},
-                    {"name": "Out-of-Scope Rate", "value": round((out_scope / total) * 100, 2) if total else 0},
-                    {"name": "AI Success Rate", "value": round((ai_success / ai_calls) * 100, 2) if ai_calls else 0},
+                    {"name": "AI Detection Rate", "value": d.get("ai_detection_rate", 0)},
+                    {"name": "Human Agent Involvement Rate", "value": d.get("human_agent_involvement_rate", 0)},
+                    {"name": "Out-of-Scope Rate", "value": d.get("out_of_scope_rate", 0)},
+                    {"name": "AI Success Rate", "value": d.get("ai_success_rate", 0)},
                 ]
+            else:
+                llm_kpis = []  # empty if no data in that range
+
         except Exception as e:
             llm_kpis = [{"error": f"LLM KPI error: {str(e)}"}]
 
