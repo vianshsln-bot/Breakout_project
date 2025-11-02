@@ -34,7 +34,7 @@ from backend.config.eleven_labs import ElevenLabsClient, ElevenLabsError
 from backend.config.supabase_client import supabase
 # Initialize router
 
-router = APIRouter(prefix="/ElevenLabs", tags=["ElevenLabs"])
+router = APIRouter(prefix="/ElevenLabs")
 
 # ================== DEPENDENCY ==================
 
@@ -370,7 +370,6 @@ async def create_kb_document_from_text(
     summary="Create document from file",
     description="Upload a file to create a knowledge base document (PDF, DOCX, TXT, HTML, EPUB)"
 )
-
 async def create_kb_document_from_file(
     file: UploadFile = File(..., description="File to upload"),
     name: Optional[str] = Query(None, description="Document name"),
@@ -673,199 +672,199 @@ async def get_dashboard_settings(
 
 # ================== CONVERSATIONS ENDPOINTS ==================
 
-@router.get(
-    "/conversations",
-    tags=["Conversations"],
-    summary="List conversations",
-    description="Retrieve all conversations with optional filtering by agent"
-)
-async def list_conversations(
-    page_size: Optional[int] = Query(None, description="Conversations per page"),
-    cursor: Optional[str] = Query(None, description="Pagination cursor"),
-    agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
-    client: ElevenLabsClient = Depends(get_client),
-):
-    """
-    List all conversations.
+# @router.get(
+#     "/conversations",
+#     tags=["Conversations"],
+#     summary="List conversations",
+#     description="Retrieve all conversations with optional filtering by agent"
+# )
+# async def list_conversations(
+#     page_size: Optional[int] = Query(None, description="Conversations per page"),
+#     cursor: Optional[str] = Query(None, description="Pagination cursor"),
+#     agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
+#     client: ElevenLabsClient = Depends(get_client),
+# ):
+#     """
+#     List all conversations.
     
-    Args:
-        page_size: Conversations per page
-        cursor: Pagination cursor
-        agent_id: Filter by agent ID
+#     Args:
+#         page_size: Conversations per page
+#         cursor: Pagination cursor
+#         agent_id: Filter by agent ID
         
-    Returns:
-        Dictionary with conversations list
-    """
-    try:
-        return client.list_conversations(
-            agent_id=agent_id,
-            page_size=page_size,
-            cursor=cursor
-        )
-    except ElevenLabsError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#     Returns:
+#         Dictionary with conversations list
+#     """
+#     try:
+#         return client.list_conversations(
+#             agent_id=agent_id,
+#             page_size=page_size,
+#             cursor=cursor
+#         )
+#     except ElevenLabsError as e:
+#         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.get(
-    "/conversations/{conversation_id}",
-    tags=["Conversations"],
-    summary="Get conversation details",
-    description="Retrieve detailed conversation with transcript"
-)
-async def get_conversation(
-    conversation_id: str,
-    client: ElevenLabsClient = Depends(get_client),
-):
-    """
-    Get conversation by ID.
+# @router.get(
+#     "/conversations/{conversation_id}",
+#     tags=["Conversations"],
+#     summary="Get conversation details",
+#     description="Retrieve detailed conversation with transcript"
+# )
+# async def get_conversation(
+#     conversation_id: str,
+#     client: ElevenLabsClient = Depends(get_client),
+# ):
+#     """
+#     Get conversation by ID.
     
-    Args:
-        conversation_id: Conversation ID
+#     Args:
+#         conversation_id: Conversation ID
         
-    Returns:
-        Conversation object with transcript
-    """
-    try:
-        return client.get_conversation(conversation_id)
-    except ElevenLabsError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#     Returns:
+#         Conversation object with transcript
+#     """
+#     try:
+#         return client.get_conversation(conversation_id)
+#     except ElevenLabsError as e:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.delete(
-    "/conversations/{conversation_id}",
-    tags=["Conversations"],
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete conversation",
-    description="Delete a conversation"
-)
-async def delete_conversation(
-    conversation_id: str,
-    client: ElevenLabsClient = Depends(get_client),
-):
-    """
-    Delete conversation.
+# @router.delete(
+#     "/conversations/{conversation_id}",
+#     tags=["Conversations"],
+#     status_code=status.HTTP_204_NO_CONTENT,
+#     summary="Delete conversation",
+#     description="Delete a conversation"
+# )
+# async def delete_conversation(
+#     conversation_id: str,
+#     client: ElevenLabsClient = Depends(get_client),
+# ):
+#     """
+#     Delete conversation.
     
-    Args:
-        conversation_id: Conversation ID
-    """
-    try:
-        client.delete_conversation(conversation_id)
-        return {"message": "Conversation deleted successfully"}
-    except ElevenLabsError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#     Args:
+#         conversation_id: Conversation ID
+#     """
+#     try:
+#         client.delete_conversation(conversation_id)
+#         return {"message": "Conversation deleted successfully"}
+#     except ElevenLabsError as e:
+#         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.get(
-    "/conversations/{conversation_id}/signed-url",
-    tags=["Conversations"],
-    summary="Get conversation signed URL",
-    description="Get a signed URL for conversation access"
-)
-async def get_conversation_signed_url(
-    conversation_id: str,
-    client: ElevenLabsClient = Depends(get_client),
-):
-    """
-    Get signed URL for conversation.
+# @router.get(
+#     "/conversations/{conversation_id}/signed-url",
+#     tags=["Conversations"],
+#     summary="Get conversation signed URL",
+#     description="Get a signed URL for conversation access"
+# )
+# async def get_conversation_signed_url(
+#     conversation_id: str,
+#     client: ElevenLabsClient = Depends(get_client),
+# ):
+#     """
+#     Get signed URL for conversation.
     
-    Args:
-        conversation_id: Conversation ID
+#     Args:
+#         conversation_id: Conversation ID
         
-    Returns:
-        Signed URL string
-    """
-    try:
-        url = client.get_conversation_signed_url(conversation_id)
-        return {"signed_url": url}
-    except ElevenLabsError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#     Returns:
+#         Signed URL string
+#     """
+#     try:
+#         url = client.get_conversation_signed_url(conversation_id)
+#         return {"signed_url": url}
+#     except ElevenLabsError as e:
+#         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 # ================== SECRETS ENDPOINTS ==================
 
-@router.get(
-    "/secrets",
-    tags=["Secrets"],
-    summary="List secrets",
-    description="Retrieve all workspace secrets (values not included)"
-)
-async def list_secrets(
-    client: ElevenLabsClient = Depends(get_client)
-):
-    """
-    List all workspace secrets.
+# @router.get(
+#     "/secrets",
+#     tags=["Secrets"],
+#     summary="List secrets",
+#     description="Retrieve all workspace secrets (values not included)"
+# )
+# async def list_secrets(
+#     client: ElevenLabsClient = Depends(get_client)
+# ):
+#     """
+#     List all workspace secrets.
     
-    Returns:
-        List of secret objects (without values)
-    """
-    try:
-        return {"secrets": client.list_secrets()}
-    except ElevenLabsError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#     Returns:
+#         List of secret objects (without values)
+#     """
+#     try:
+#         return {"secrets": client.list_secrets()}
+#     except ElevenLabsError as e:
+#         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post(
-    "/secrets",
-    tags=["Secrets"],
-    status_code=status.HTTP_201_CREATED,
-    summary="Create secret",
-    description="Create a new workspace secret for tools"
-)
-async def create_secret(
-    req: SecretCreateRequest,
-    client: ElevenLabsClient = Depends(get_client),
-):
-    """
-    Create a workspace secret.
+# @router.post(
+#     "/secrets",
+#     tags=["Secrets"],
+#     status_code=status.HTTP_201_CREATED,
+#     summary="Create secret",
+#     description="Create a new workspace secret for tools"
+# )
+# async def create_secret(
+#     req: SecretCreateRequest,
+#     client: ElevenLabsClient = Depends(get_client),
+# ):
+#     """
+#     Create a workspace secret.
     
-    Args:
-        req: Secret name and value
+#     Args:
+#         req: Secret name and value
         
-    Returns:
-        Created secret object
-    """
-    try:
-        return client.create_secret(name=req.name, value=req.value)
-    except ElevenLabsError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#     Returns:
+#         Created secret object
+#     """
+#     try:
+#         return client.create_secret(name=req.name, value=req.value)
+#     except ElevenLabsError as e:
+#         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.delete(
-    "/secrets/{secret_id}",
-    tags=["Secrets"],
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete secret",
-    description="Delete a workspace secret"
-)
-async def delete_secret(
-    secret_id: str,
-    client: ElevenLabsClient = Depends(get_client),
-):
-    """
-    Delete a secret.
+# @router.delete(
+#     "/secrets/{secret_id}",
+#     tags=["Secrets"],
+#     status_code=status.HTTP_204_NO_CONTENT,
+#     summary="Delete secret",
+#     description="Delete a workspace secret"
+# )
+# async def delete_secret(
+#     secret_id: str,
+#     client: ElevenLabsClient = Depends(get_client),
+# ):
+#     """
+#     Delete a secret.
     
-    Args:
-        secret_id: Secret ID
-    """
-    try:
-        client.delete_secret(secret_id)
-        return {"message": "Secret deleted successfully"}
-    except ElevenLabsError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#     Args:
+#         secret_id: Secret ID
+#     """
+#     try:
+#         client.delete_secret(secret_id)
+#         return {"message": "Secret deleted successfully"}
+#     except ElevenLabsError as e:
+#         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 
@@ -1124,31 +1123,31 @@ async def elevenlabs_webhook(request: Request):
 
 # ================== HEALTH CHECK ==================
 
-@router.get(
-    "/health",
-    tags=["Health"],
-    summary="Health check",
-    description="Check if the ElevenLabs service is accessible"
-)
-async def health_check(client: ElevenLabsClient = Depends(get_client)):
-    """
-    Health check endpoint to verify ElevenLabs connectivity.
+# @router.get(
+#     "/health",
+#     tags=["Health"],
+#     summary="Health check",
+#     description="Check if the ElevenLabs service is accessible"
+# )
+# async def health_check(client: ElevenLabsClient = Depends(get_client)):
+#     """
+#     Health check endpoint to verify ElevenLabs connectivity.
     
-    Returns:
-        Health status and agent count
-    """
-    try:
-        count = client.count_agents()
-        return {
-            "status": "healthy",
-            "service": "ElevenLabs API",
-            "agent_count": count
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"ElevenLabs service unavailable: {str(e)}"
-        )
+#     Returns:
+#         Health status and agent count
+#     """
+#     try:
+#         count = client.count_agents()
+#         return {
+#             "status": "healthy",
+#             "service": "ElevenLabs API",
+#             "agent_count": count
+#         }
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+#             detail=f"ElevenLabs service unavailable: {str(e)}"
+#         )
     
 
 

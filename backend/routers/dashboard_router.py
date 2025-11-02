@@ -27,19 +27,19 @@ class DateRange(str, Enum):
 def tr_param(param: DateRange = Query(default=DateRange.all_time)) -> str:
     return param.value
 
-@router.get("/calls-trend")
-def calls_trend(time_range: DateRange = Query(default=DateRange.all_time)):
-    try:
-        return get_calls_trend(tr_param(time_range))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/calls-trend")
+# def calls_trend(time_range: DateRange = Query(default=DateRange.all_time)):
+#     try:
+#         return get_calls_trend(tr_param(time_range))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/bookings-trend")
-def bookings_trend(time_range: DateRange = Query(default=DateRange.all_time)):
-    try:
-        return get_bookings_trend(tr_param(time_range))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/bookings-trend")
+# def bookings_trend(time_range: DateRange = Query(default=DateRange.all_time)):
+#     try:
+#         return get_bookings_trend(tr_param(time_range))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 #@router.get("/lead-funnel")
 #def lead_funnel(time_range: DateRange = Query(default=DateRange.all_time)):
@@ -55,12 +55,12 @@ def bookings_trend(time_range: DateRange = Query(default=DateRange.all_time)):
 #    except Exception as e:
 #        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/customer-growth")
-def customer_growth(time_range: DateRange = Query(default=DateRange.all_time)):
-    try:
-        return get_customer_growth(tr_param(time_range))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/customer-growth")
+# def customer_growth(time_range: DateRange = Query(default=DateRange.all_time)):
+#     try:
+#         return get_customer_growth(tr_param(time_range))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 # @router.get("/customer-segments")
 # def customer_segments(time_range: DateRange = Query(default=DateRange.all_time)):
@@ -83,12 +83,12 @@ def customer_growth(time_range: DateRange = Query(default=DateRange.all_time)):
 #    except Exception as e:
 #        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/sentiment-summary")
-def sentiment_summary(time_range: DateRange = Query(default=DateRange.all_time)):
-    try:
-        return get_sentiment_summary(tr_param(time_range))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/sentiment-summary")
+# def sentiment_summary(time_range: DateRange = Query(default=DateRange.all_time)):
+#     try:
+#         return get_sentiment_summary(tr_param(time_range))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 #@router.get("/satisfaction")
 #def satisfaction(time_range: DateRange = Query(default=DateRange.all_time)):
@@ -98,19 +98,19 @@ def sentiment_summary(time_range: DateRange = Query(default=DateRange.all_time))
 #        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/customer-rating-summary")
-def customer_rating_summary(time_range: DateRange = Query(default=DateRange.all_time)):
-    try:
-        return get_customer_rating_summary(tr_param(time_range))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/customer-rating-summary")
+# def customer_rating_summary(time_range: DateRange = Query(default=DateRange.all_time)):
+#     try:
+#         return get_customer_rating_summary(tr_param(time_range))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/call-intent-summary")
-def call_intent_summary(time_range: DateRange = Query(default=DateRange.all_time)):
-    try:
-        return get_call_intent_summary(tr_param(time_range))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/call-intent-summary")
+# def call_intent_summary(time_range: DateRange = Query(default=DateRange.all_time)):
+#     try:
+#         return get_call_intent_summary(tr_param(time_range))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/overview")
 def overview(time_range: DateRange = Query(default=DateRange.all_time)):

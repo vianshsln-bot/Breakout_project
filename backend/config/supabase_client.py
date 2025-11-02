@@ -11,3 +11,7 @@ if not url or not key:
     raise Exception("Supabase URL and Key must be set in the environment variables.")
 
 supabase: SupabaseClient = create_client(url, key)
+
+
+# if __name__=="__main__":
+#     print(supabase.)

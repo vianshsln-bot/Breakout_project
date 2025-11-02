@@ -245,6 +245,17 @@ def cancel_booking(booking_id: str, notify_customer: bool = True, lang: str = "e
         raise HTTPException(status_code=status, detail="Failed to cancel booking")
 
 
+from bs4 import BeautifulSoup
+import html
+def clean_description(raw_html):
+    # Remove HTML tags safely
+    soup = BeautifulSoup(raw_html, "html.parser")
+    text = soup.get_text(separator=' ', strip=True)
+    # Decode HTML entities (like &mdash;)
+    text = html.unescape(text)
+    return text
+
+
 
 # Refresh themes from Bookeo
 @router.post("/themes/refresh")
@@ -258,13 +269,14 @@ def refresh_themes(bookeo: BookeoAPI = Depends(get_bookeo_client)):
 
         try:
             payload = bookeo._make_request("GET", "/settings/products", params=params)
+            
         except requests.RequestException:
             raise HTTPException(status_code=502, detail="Bookeo API request failed")
 
         for theme in payload.get("data", []):
             duration_iso = theme.get("duration", {})
             duration_minutes = parse_iso_duration_to_minutes(duration_iso)
-
+            # print(json.dumps(theme,indent=2))
             booking_limits = theme.get("bookingLimits", [])
             # print(booking_limits)
             min_limit = booking_limits[0]['min']
@@ -273,7 +285,7 @@ def refresh_themes(bookeo: BookeoAPI = Depends(get_bookeo_client)):
             row = {
                 "theme_id": theme["productId"],
                 "name": theme.get("name", ""),
-                "description": theme.get("description"),
+                "description": clean_description(theme.get("description")),
                 "duration_minutes": duration_minutes,
                 "booking_limit_min": min_limit,
                 "booking_limit_max": max_limit,
