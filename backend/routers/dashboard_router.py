@@ -2,6 +2,7 @@ from enum import Enum
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.services.dashboard_service import (
+    get_overview
     get_calls_trend,
     get_bookings_trend,
     get_lead_funnel,
@@ -11,9 +12,8 @@ from backend.services.dashboard_service import (
     get_payments_status,
     get_sentiment_summary,
     get_satisfaction,
-    get_overview,
-    get_call_intent_summary,
-    get_customer_rating_summary
+    get_customer_rating_summary,
+    get_call_intent_summary
 )
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
