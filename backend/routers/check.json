@@ -1,0 +1,306 @@
+{
+    "type": "post_call_transcription",
+    "event_timestamp": 1762081753,
+    "data": {
+        "agent_id": "agent_1401k8ds8fene6b8sxff74yv7tbg",
+        "conversation_id": "conv_7101k92433dhfdzvetx1g5r9r49z",
+        "status": "done",
+        "user_id": "m15KlOhxmbRt95iqG0onF8EvF723",
+        "transcript": [
+            {
+                "role": "agent",
+                "agent_metadata": {
+                    "agent_id": "agent_1401k8ds8fene6b8sxff74yv7tbg",
+                    "workflow_node_id": "node_01k8dvvn5sfk5vpb00ntby2bx7"
+                },
+                "message": "Welcome to Breakout Bangalore! Ready to find the perfect escape room adventure?\nMay I know your registered email address or phone number.",
+                "multivoice_message": null,
+                "tool_calls": [],
+                "tool_results": [],
+                "feedback": null,
+                "llm_override": null,
+                "time_in_call_secs": 0,
+                "conversation_turn_metrics": {
+                    "metrics": {
+                        "convai_tts_service_ttfb": {
+                            "elapsed_time": 0.3734244220031542
+                        }
+                    }
+                },
+                "rag_retrieval_info": null,
+                "llm_usage": null,
+                "interrupted": false,
+                "original_message": null,
+                "source_medium": null
+            },
+            {
+                "role": "user",
+                "agent_metadata": null,
+                "message": "Okay, so...",
+                "multivoice_message": null,
+                "tool_calls": [],
+                "tool_results": [],
+                "feedback": null,
+                "llm_override": null,
+                "time_in_call_secs": 9,
+                "conversation_turn_metrics": null,
+                "rag_retrieval_info": null,
+                "llm_usage": null,
+                "interrupted": false,
+                "original_message": null,
+                "source_medium": null
+            }
+        ],
+        "metadata": {
+            "start_time_unix_secs": 1762081738,
+            "accepted_time_unix_secs": 1762081738,
+            "call_duration_secs": 10,
+            "cost": 55,
+            "deletion_settings": {
+                "deletion_time_unix_secs": null,
+                "deleted_logs_at_time_unix_secs": null,
+                "deleted_audio_at_time_unix_secs": null,
+                "deleted_transcript_at_time_unix_secs": null,
+                "delete_transcript_and_pii": false,
+                "delete_audio": false
+            },
+            "feedback": {
+                "overall_score": null,
+                "likes": 0,
+                "dislikes": 0
+            },
+            "authorization_method": "authorization_header",
+            "charging": {
+                "dev_discount": true,
+                "is_burst": false,
+                "tier": "starter",
+                "llm_usage": {
+                    "irreversible_generation": {
+                        "model_usage": {}
+                    },
+                    "initiated_generation": {
+                        "model_usage": {}
+                    }
+                },
+                "llm_price": 0,
+                "llm_charge": 0,
+                "call_charge": 55,
+                "free_minutes_consumed": 0.0,
+                "free_llm_dollars_consumed": 0.0
+            },
+            "phone_call": null,
+            "batch_call": null,
+            "termination_reason": "Client disconnected: 1005",
+            "error": null,
+            "main_language": "en",
+            "rag_usage": null,
+            "text_only": false,
+            "features_usage": {
+                "language_detection": {
+                    "enabled": true,
+                    "used": false
+                },
+                "transfer_to_agent": {
+                    "enabled": false,
+                    "used": false
+                },
+                "transfer_to_number": {
+                    "enabled": false,
+                    "used": false
+                },
+                "multivoice": {
+                    "enabled": false,
+                    "used": false
+                },
+                "dtmf_tones": {
+                    "enabled": false,
+                    "used": false
+                },
+                "external_mcp_servers": {
+                    "enabled": false,
+                    "used": false
+                },
+                "pii_zrm_workspace": false,
+                "pii_zrm_agent": false,
+                "tool_dynamic_variable_updates": {
+                    "enabled": false,
+                    "used": false
+                },
+                "is_livekit": false,
+                "voicemail_detection": {
+                    "enabled": false,
+                    "used": false
+                },
+                "workflow": {
+                    "enabled": true,
+                    "tool_node": {
+                        "enabled": false,
+                        "used": false
+                    },
+                    "standalone_agent_node": {
+                        "enabled": false,
+                        "used": false
+                    },
+                    "phone_number_node": {
+                        "enabled": false,
+                        "used": false
+                    },
+                    "end_node": {
+                        "enabled": false,
+                        "used": false
+                    }
+                },
+                "agent_testing": {
+                    "enabled": false,
+                    "tests_ran_after_last_modification": false,
+                    "tests_ran_in_last_7_days": false
+                }
+            },
+            "eleven_assistant": {
+                "is_eleven_assistant": false
+            },
+            "initiator_id": "m15KlOhxmbRt95iqG0onF8EvF723",
+            "conversation_initiation_source": "react_sdk",
+            "conversation_initiation_source_version": "0.5.0",
+            "timezone": "Asia/Kolkata",
+            "initiation_trigger": {
+                "trigger_type": "default"
+            },
+            "async_metadata": null,
+            "whatsapp": null,
+            "agent_created_from": "ui",
+            "agent_last_updated_from": "ui"
+        },
+        "analysis": {
+            "evaluation_criteria_results": {
+                "conversation_completed": {
+                    "criteria_id": "conversation_completed",
+                    "result": "failure",
+                    "rationale": "The conversation ended abruptly after the user's response \"Okay, so...\". The user's need was not addressed, and there was no proper closing or goodbye exchanged. The call duration was only 10 seconds, indicating a premature end."
+                },
+                "out_of_scope": {
+                    "criteria_id": "out_of_scope",
+                    "result": "unknown",
+                    "rationale": "The conversation is too brief to determine if the goal was met. The user's response is incomplete, and there's no indication of the conversation's direction."
+                },
+                "inquiry_resolved": {
+                    "criteria_id": "inquiry_resolved",
+                    "result": "unknown",
+                    "rationale": "The conversation ended abruptly after the agent's initial greeting and request for information. The user only managed to say \"Okay, so...\" before the transcript ended. There is no indication of whether the customer's inquiry was resolved, if any questions were answered, or if the customer needs to call back. Therefore, the resolution status is ambiguous."
+                },
+                "ai_detected_by_customer": {
+                    "criteria_id": "ai_detected_by_customer",
+                    "result": "unknown",
+                    "rationale": "The conversation is too short to determine if the user detected the AI. The user only responded with \"Okay, so...\" which doesn't provide enough information."
+                },
+                "human_transfer_needed": {
+                    "criteria_id": "human_transfer_needed",
+                    "result": "unknown",
+                    "rationale": "The conversation ended abruptly after the user responded with \"Okay, so...\", which is insufficient to determine if the agent successfully handled the customer's request, if there was any frustration, or if escalation was needed. The conversation is incomplete."
+                },
+                "booking_successful": {
+                    "criteria_id": "booking_successful",
+                    "result": "unknown",
+                    "rationale": "The conversation ended abruptly after the agent's initial greeting and request for user information. There is no information about payment, booking confirmation, or any other details required to assess the success or failure of the booking process. Therefore, it's impossible to determine if the goal was met."
+                }
+            },
+            "data_collection_results": {
+                "sentiment_score": {
+                    "data_collection_id": "sentiment_score",
+                    "value": 0.3,
+                    "json_schema": {
+                        "type": "integer",
+                        "description": "Extract sentiment as a score from 1 to 5 based on customer's tone and language throughout the entire call.\n\n1 = Very Negative (angry, frustrated, hostile)\n2 = Negative (dissatisfied, annoyed, complaints)\n3 = Neutral (indifferent, factual, no clear emotion)\n4 = Positive (satisfied, friendly, pleased)\n5 = Very Positive (extremely happy, enthusiastic, grateful)\n\nLook for:\n- Negative words: angry, frustrated, disappointed, upset, problem, issue\n- Positive words: great, excellent, thank, appreciate, helpful, perfect\n- Tone indicators: sarcasm, politeness, enthusiasm, urgency\n- Overall interaction pattern throughout the call\n\nReturn integer value between 1 and 5.\n",
+                        "enum": null,
+                        "is_system_provided": false,
+                        "dynamic_variable": "",
+                        "constant_value": ""
+                    },
+                    "rationale": "The conversation is very short and only contains the agent's greeting and initial question, followed by the user's acknowledgement. There are no clear indicators of positive or negative sentiment, and the interaction is too brief to determine an overall tone. Therefore, it's not possible to assign a sentiment score from 1 to 5 based on the available information."
+                },
+                "emotional_score": {
+                    "data_collection_id": "emotional_score",
+                    "value": 0.4,
+                    "json_schema": {
+                        "type": "integer",
+                        "description": "Extract sentiment as a score from 1 to 5 based on customer's tone and language throughout the entire call.\n\n1 = Very Negative (angry, frustrated, hostile)\n2 = Negative (dissatisfied, annoyed, complaints)\n3 = Neutral (indifferent, factual, no clear emotion)\n4 = Positive (satisfied, friendly, pleased)\n5 = Very Positive (extremely happy, enthusiastic, grateful)\n\nLook for:\n- Negative words: angry, frustrated, disappointed, upset, problem, issue\n- Positive words: great, excellent, thank, appreciate, helpful, perfect\n- Tone indicators: sarcasm, politeness, enthusiasm, urgency\n- Overall interaction pattern throughout the call\n\nReturn integer value between 1 and 5.\n",
+                        "enum": null,
+                        "is_system_provided": false,
+                        "dynamic_variable": "",
+                        "constant_value": ""
+                    },
+                    "rationale": "The conversation is very short and only contains the agent's greeting and initial question, followed by the user's acknowledgement. There are no clear indicators of positive or negative sentiment, and the interaction is too brief to determine an overall tone. Therefore, it's not possible to assign a sentiment score from 1 to 5 based on the available information."
+                },
+                
+                "customer_satisfaction_rating": {
+                    "data_collection_id": "customer_satisfaction_rating",
+                    "value": null,
+                    "json_schema": {
+                        "type": "integer",
+                        "description": "Extract the customer satisfaction rating from the conversation. Look for:\n- Direct numerical ratings: \"I'd rate this 4 out of 5\", \"My rating is 5\"\n- Star ratings: \"5 stars\", \"4 stars\"\n- Satisfaction words mapped to ratings:\n  * Extremely satisfied / Very happy / Perfect / Amazing \u2192 5\n  * Satisfied / Happy / Good / Helpful \u2192 4\n  * Neutral / Okay / Average \u2192 3\n  * Somewhat dissatisfied / Not ideal / Could be better \u2192 2\n  * Very dissatisfied / Angry / Frustrated \u2192 1\n\nIf no explicit rating found, infer from overall conversation sentiment and satisfaction level.\nReturn integer from 1 to 5.\n",
+                        "enum": null,
+                        "is_system_provided": false,
+                        "dynamic_variable": "",
+                        "constant_value": ""
+                    },
+                    "rationale": "There is no explicit customer satisfaction rating in the conversation. The conversation just started and the user has not provided any feedback or rating. Therefore, I cannot infer any rating from the conversation."
+                },
+                "customer_type": {
+                    "data_collection_id": "customer_type",
+                    "value": null,
+                    "json_schema": {
+                        "type": "string",
+                        "description": "Determine if the customer is NEW or RETURNING based on the conversation. Look for:\n- First-time references: \"This is my first booking\", \"First time using your service\"\n- Previous booking mentions: \"I booked last month\", \"My previous booking was...\"\n- Account/membership references: \"My account\", \"I'm a member\", \"I have existing bookings\"\n- Familiarity with process: Agent explains basic steps vs customer knows the process\n- Service history: Any mentions of past experiences with the company\n\nExtract as either \"new\" or \"returning\".\n",
+                        "enum": [
+                            "NEW",
+                            "RETURNING"
+                        ],
+                        "is_system_provided": false,
+                        "dynamic_variable": "",
+                        "constant_value": ""
+                    },
+                    "rationale": "The conversation is too short to determine if the customer is new or returning. The agent asks for registration details, but the user only responds with \"Okay, so...\". There are no mentions of previous bookings, account details, or any other indicators of the customer's status."
+                }
+            },
+            "call_successful": "failure",
+            "transcript_summary": "The agent initiated a conversation with a user, welcoming them to Breakout Bangalore and asking for their registered email address or phone number. The user responded with \"Okay, so...\"\n",
+            "call_summary_title": "Escape room introduction"
+        },
+        "conversation_initiation_client_data": {
+            "conversation_config_override": {
+                "tts": {
+                    "voice_id": null,
+                    "stability": null,
+                    "speed": null,
+                    "similarity_boost": null
+                },
+                "conversation": {
+                    "text_only": null
+                },
+                "agent": {
+                    "first_message": null,
+                    "language": "en",
+                    "prompt": null
+                }
+            },
+            "custom_llm_extra_body": {},
+            "user_id": "m15KlOhxmbRt95iqG0onF8EvF723",
+            "source_info": {
+                "source": "react_sdk",
+                "version": "0.5.0"
+            },
+            "dynamic_variables": {
+                "system__agent_id": "agent_1401k8ds8fene6b8sxff74yv7tbg",
+                "system__current_agent_id": "agent_1401k8ds8fene6b8sxff74yv7tbg",
+                "system__conversation_id": "conv_7101k92433dhfdzvetx1g5r9r49z",
+                "system__caller_id": null,
+                "system__called_number": null,
+                "system__call_duration_secs": 10,
+                "system__time_utc": "2025-11-02T11:09:08.979885+00:00",
+                "system__time": "Sunday, 16:39 02 November 2025",
+                "system__timezone": "Asia/Kolkata",
+                "system__call_sid": null
+            }
+        }
+    }
+}

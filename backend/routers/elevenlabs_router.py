@@ -912,6 +912,7 @@ def extract_transcript_text(transcript_array: list) -> str:
 def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Extract call analysis data from ElevenLabs webhook payload
+    Both sentiment_score and emotional_score are now 0.0-1.0 range
     """
     try:
         data = webhook_payload.get("data", {})
@@ -933,19 +934,19 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
         booking_success = (booking_successful_eval.get("result") == "success")
         
         human_transfer_eval = eval_results.get("human_transfer_needed", {})
-        human_agent_flag = (human_transfer_eval.get("result") == "failure")  # failure = transfer needed
+        human_agent_flag = (human_transfer_eval.get("result") == "failure")
         human_intervention_reason = ""
         if human_agent_flag:
             human_intervention_reason = human_transfer_eval.get("rationale", "")[:100]
         
         ai_detected_eval = eval_results.get("ai_detected_by_customer", {})
-        ai_detected_flag = (ai_detected_eval.get("result") == "failure")  # failure = detected
+        ai_detected_flag = (ai_detected_eval.get("result") == "failure")
         
         inquiry_resolved_eval = eval_results.get("inquiry_resolved", {})
         product_inquiry_resolved = (inquiry_resolved_eval.get("result") == "success")
         
         conversation_topic_eval = eval_results.get("out_of_scope", {})
-        out_of_scope = (conversation_topic_eval.get("result") == "failure")  # failure = out of scope
+        out_of_scope = (conversation_topic_eval.get("result") == "failure")
         
         conversation_completed_eval = eval_results.get("conversation_completed", {})
         failed_conversation_reason = ""
@@ -953,34 +954,38 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
             failed_conversation_reason = conversation_completed_eval.get("rationale", "")[:100]
         
         # MAPPING: data_collection_results → database fields
-        # Structure: { "data_collection_id": { "value": ..., "rationale": ... } }
+        # Both sentiment_score and emotional_score are now 0.0-1.0 from ElevenLabs
         
         sentiment_data = collected_data.get("sentiment_score", {})
         sentiment_score = sentiment_data.get("value")
+        
+        emotional_data = collected_data.get("emotional_score", {})
+        emotional_score = emotional_data.get("value")
         
         customer_rating_data = collected_data.get("customer_satisfaction_rating", {})
         customer_rating = customer_rating_data.get("value")
         
         customer_type_data = collected_data.get("customer_type", {})
-        customer_type = customer_type_data.get("value")  # "NEW" or "RETURNING" or None
+        customer_type = customer_type_data.get("value")
         
         # Metadata - safe extraction with defaults
         call_duration = metadata.get("call_duration_secs", 0) if metadata else 0
         cost = metadata.get("cost", 0) if metadata else 0
         summary = analysis.get("transcript_summary", "") if analysis else ""
         
-        # Safe normalization for sentiment_score (handle None/null)
+        # Safe normalization for sentiment_score (0.0-1.0 range)
         if sentiment_score is not None and isinstance(sentiment_score, (int, float)):
-            if 1 <= sentiment_score <= 5:
-                sentiment_score_normalized = (sentiment_score - 1) / 4  # Convert 1-5 to 0-1
-                emotional_score = sentiment_score_normalized
-            else:
-                sentiment_score_normalized = 0.5
-                emotional_score = 0.5
+            # Clamp to 0.0-1.0 range
+            sentiment_score = max(0.0, min(1.0, float(sentiment_score)))
         else:
-            # Handle null/None from payload
-            sentiment_score_normalized = 0.5
-            emotional_score = 0.5
+            sentiment_score = 0.5  # Default neutral
+        
+        # Safe normalization for emotional_score (0.0-1.0 range)
+        if emotional_score is not None and isinstance(emotional_score, (int, float)):
+            # Clamp to 0.0-1.0 range
+            emotional_score = max(0.0, min(1.0, float(emotional_score)))
+        else:
+            emotional_score = 0.5  # Default moderate
         
         # Safe normalization for customer_rating (handle None/null)
         if customer_rating is None or not isinstance(customer_rating, (int, float)):
@@ -992,8 +997,8 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
             "human_agent_flag": human_agent_flag,
             "ai_detected_flag": ai_detected_flag,
             "summary": summary,
-            "sentiment_score": sentiment_score_normalized,
-            "emotional_score": emotional_score,
+            "sentiment_score": sentiment_score,  # Now 0.0-1.0
+            "emotional_score": emotional_score,  # Now 0.0-1.0
             "human_intervention_reason": human_intervention_reason,
             "failed_conversation_reason": failed_conversation_reason,
             "out_of_scope": out_of_scope,
@@ -1046,7 +1051,7 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         webhook_payload = json.loads(payload_body)
         
         # Optional: Forward to webhook.site for debugging
-        requests.post("https://webhook.site/cd1995bf-d2c7-4f5d-88f7-0d649c83e07e", json=webhook_payload)
+        # requests.post("https://webhook.site/cd1995bf-d2c7-4f5d-88f7-0d649c83e07e", json=webhook_payload)
         
         # Log compact version
         print("\n" + "="*80)
@@ -1103,14 +1108,22 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         print(f"✅ Call saved: {call_id}")
         
         # Step 3: Save to call_analysis table
+        # Ensure scores are properly formatted as floats
+        sentiment_score = call_analysis.get("sentiment_score", 0.5)
+        emotional_score = call_analysis.get("emotional_score", 0.5)
+        
+        # Convert to float and clamp to 0.0-1.0 range as final safety check
+        sentiment_score = max(0.0, min(1.0, float(sentiment_score)))
+        emotional_score = max(0.0, min(1.0, float(emotional_score)))
+        
         analysis_response = supabase.table("call_analysis").insert({
             "conv_id": conv_id,
             "customer_rating": call_analysis.get("customer_rating", 3),
             "human_agent_flag": call_analysis.get("human_agent_flag", False),
             "ai_detect_flag": call_analysis.get("ai_detected_flag", False),
             "summary": call_analysis.get("summary", ""),
-            "sentiment_score": call_analysis.get("sentiment_score", 0.5),
-            "emotional_score": call_analysis.get("emotional_score", 0.5),
+            "sentiment_score": sentiment_score,  # 0.0-1.0 range
+            "emotional_score": emotional_score,  # 0.0-1.0 range
             "human_intervention_reason": call_analysis.get("human_intervention_reason", ""),
             "failed_conversation_reason": call_analysis.get("failed_conversation_reason", ""),
             "out_of_scope": call_analysis.get("out_of_scope", False)
@@ -1123,13 +1136,18 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         analysis_id = analysis_response.data[0]["id"]
         print(f"✅ Call analysis saved: {analysis_id}")
         
+        # Enhanced success response with more details
+        print(f"📊 Scores - Sentiment: {sentiment_score:.2f}, Emotional: {emotional_score:.2f}")
+        
         return {
             "status": "success",
             "conversation_id": conv_id,
             "call_id": call_id,
             "analysis_id": analysis_id,
             "summary": call_analysis.get("summary", "")[:50],
-            "customer_type": call_analysis.get("customer_type")
+            "customer_type": call_analysis.get("customer_type"),
+            "sentiment_score": sentiment_score,
+            "emotional_score": emotional_score
         }
         
     except json.JSONDecodeError as e:
@@ -1141,6 +1159,7 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         import traceback
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
+
 
 
 # ================== HEALTH CHECK ==================
@@ -1173,3 +1192,155 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
     
 
 
+
+
+# Test the extraction
+if __name__ == "__main__":
+    print("="*80)
+    print("🧪 TESTING CALL ANALYSIS EXTRACTION (0-1 RANGE)")
+    print("="*80)
+    
+    # Load the JSON file
+    with open("backend/routers/check.json", "r") as f:
+        webhook_payload = json.load(f)
+    
+    print(f"\n✅ Loaded JSON file successfully")
+    print(f"Webhook Type: {webhook_payload.get('type')}")
+    print(f"Conversation ID: {webhook_payload.get('data', {}).get('conversation_id')}")
+    
+    # Extract call analysis
+    print("\n" + "="*80)
+    print("📊 EXTRACTING CALL ANALYSIS")
+    print("="*80)
+    
+    result = extract_call_analysis(webhook_payload)
+    
+    if result:
+        print("\n✅ Extraction successful!\n")
+        
+        # Print formatted results
+        print("📋 CALL TABLE DATA:")
+        print(f"  conv_id: {result['conv_id']}")
+        print(f"  call_intent: {result['summary'][:100]}")
+        print(f"  duration: {result['duration']} seconds")
+        print(f"  cost: {result['cost']}")
+        print(f"  status: {result['status']}")
+        
+        print("\n📊 CALL_ANALYSIS TABLE DATA:")
+        print(f"  conv_id: {result['conv_id']}")
+        print(f"  customer_rating: {result['customer_rating']}")
+        print(f"  human_agent_flag: {result['human_agent_flag']}")
+        print(f"  ai_detected_flag: {result['ai_detected_flag']}")
+        print(f"  sentiment_score: {result['sentiment_score']:.2f} (0.0-1.0 range)")
+        print(f"  emotional_score: {result['emotional_score']:.2f} (0.0-1.0 range)")
+        print(f"  out_of_scope: {result['out_of_scope']}")
+        print(f"  booking_successful: {result['booking_successful']}")
+        print(f"  product_inquiry_resolved: {result['product_inquiry_resolved']}")
+        print(f"  customer_type: {result['customer_type']}")
+        
+        print("\n📝 TRANSCRIPT:")
+        print(result['transcript'])
+        
+        print("\n📄 SUMMARY:")
+        print(result['summary'])
+        
+        if result['human_intervention_reason']:
+            print(f"\n⚠️ Human Intervention Reason: {result['human_intervention_reason']}")
+        
+        if result['failed_conversation_reason']:
+            print(f"\n❌ Failed Conversation Reason: {result['failed_conversation_reason']}")
+        
+        print("\n" + "="*80)
+        print("📤 SUPABASE INSERT PREVIEW")
+        print("="*80)
+        
+        print("\n✅ CALL TABLE INSERT:")
+        call_insert = {
+            "conv_id": result['conv_id'],
+            "call_intent": result['summary'][:100],
+            "transcript": result['transcript'],
+            "date_time": "2025-11-02T18:50:00+05:30"  # Example timestamp
+        }
+        print(json.dumps(call_insert, indent=2))
+        
+        print("\n✅ CALL_ANALYSIS TABLE INSERT:")
+        analysis_insert = {
+            "conv_id": result['conv_id'],
+            "customer_rating": result['customer_rating'],
+            "human_agent_flag": result['human_agent_flag'],
+            "ai_detect_flag": result['ai_detected_flag'],
+            "summary": result['summary'],
+            "sentiment_score": result['sentiment_score'],
+            "emotional_score": result['emotional_score'],
+            "human_intervention_reason": result['human_intervention_reason'],
+            "failed_conversation_reason": result['failed_conversation_reason'],
+            "out_of_scope": result['out_of_scope']
+        }
+        print(json.dumps(analysis_insert, indent=2))
+        
+        print("\n" + "="*80)
+        print("✅ TEST COMPLETED SUCCESSFULLY")
+        print("="*80)
+        
+    else:
+        print("\n❌ Extraction failed - check errors above")
+    print("="*80)
+    print("🧪 TESTING CALL ANALYSIS EXTRACTION")
+    print("="*80)
+    
+    # Load the JSON file
+    with open("backend/routers/check.json", "r") as f:
+        webhook_payload = json.load(f)
+    
+    print(f"\n✅ Loaded JSON file successfully")
+    print(f"Webhook Type: {webhook_payload.get('type')}")
+    print(f"Conversation ID: {webhook_payload.get('data', {}).get('conversation_id')}")
+    
+    # Extract call analysis
+    print("\n" + "="*80)
+    print("📊 EXTRACTING CALL ANALYSIS")
+    print("="*80)
+    
+    result = extract_call_analysis(webhook_payload)
+    
+    if result:
+        print("\n✅ Extraction successful!\n")
+        
+        # Print formatted results
+        print("📋 CALL TABLE DATA:")
+        print(f"  conv_id: {result['conv_id']}")
+        print(f"  call_intent: {result['summary']}")
+        print(f"  duration: {result['duration']} seconds")
+        print(f"  cost: {result['cost']} creds")
+        print(f"  status: {result['status']}")
+        
+        print("\n📊 CALL_ANALYSIS TABLE DATA:")
+        print(f"  conv_id: {result['conv_id']}")
+        print(f"  customer_rating: {result['customer_rating']}")
+        print(f"  human_agent_flag: {result['human_agent_flag']}")
+        print(f"  ai_detected_flag: {result['ai_detected_flag']}")
+        print(f"  sentiment_score: {result['sentiment_score']}")
+        print(f"  emotional_score: {result['emotional_score']}")
+        print(f"  out_of_scope: {result['out_of_scope']}")
+        print(f"  booking_successful: {result['booking_successful']}")
+        print(f"  product_inquiry_resolved: {result['product_inquiry_resolved']}")
+        print(f"  customer_type: {result['customer_type']}")
+        
+        print("\n📝 TRANSCRIPT:")
+        print(result['transcript'])
+        
+        print("\n📄 SUMMARY:")
+        print(result['summary'])
+        
+        if result['human_intervention_reason']:
+            print(f"\n⚠️ Human Intervention Reason: {result['human_intervention_reason']}")
+        
+        if result['failed_conversation_reason']:
+            print(f"\n❌ Failed Conversation Reason: {result['failed_conversation_reason']}")
+        
+        print("\n" + "="*80)
+        print("✅ TEST COMPLETED SUCCESSFULLY")
+        print("="*80)
+        
+    else:
+        print("\n❌ Extraction failed - check errors above")
