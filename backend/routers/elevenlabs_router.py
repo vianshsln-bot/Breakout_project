@@ -968,10 +968,14 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
         customer_type_data = collected_data.get("customer_type", {})
         customer_type = customer_type_data.get("value")
         
+        customer_id_data = collected_data.get("customer_id",{})
+        customer_id = customer_id_data.get("value")
+
         # Metadata - safe extraction with defaults
         call_duration = metadata.get("call_duration_secs", 0) if metadata else 0
         cost = metadata.get("cost", 0) if metadata else 0
         summary = analysis.get("transcript_summary", "") if analysis else ""
+        call_intent= analysis.get("call_summary_title") if analysis else ""
         
         # Safe normalization for sentiment_score (0.0-1.0 range)
         if sentiment_score is not None and isinstance(sentiment_score, (int, float)):
@@ -1010,6 +1014,8 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
             "cost": cost,
             "status": data.get("status"),
             "customer_type": customer_type,
+            "customer_id":customer_id,
+            "call_intent":call_intent
         }
         
     except Exception as e:
@@ -1095,8 +1101,12 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
         # Step 2: Save to call table
         call_response = supabase.table("call").insert({
             "conv_id": conv_id,
-            "call_intent": call_analysis.get("summary", "")[:100],
+            "customer_id": call_analysis.get("customer_id",""),
+            "call_intent": call_analysis.get("summary", ""),
             "transcript": call_analysis.get("transcript", ""),
+            "duration" : call_analysis.get("duration"),
+            "call_intent":call_analysis.get("call_intent"),
+            "credits_consumed":call_analysis.get("cost")
             "date_time": datetime.now(UTC).isoformat()
         }).execute()
         
