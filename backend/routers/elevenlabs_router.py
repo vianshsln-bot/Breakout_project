@@ -1106,7 +1106,7 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
             "transcript": call_analysis.get("transcript", ""),
             "duration" : call_analysis.get("duration"),
             "call_intent":call_analysis.get("call_intent"),
-            "credits_consumed":call_analysis.get("cost")
+            "credits_consumed":call_analysis.get("cost"),
             "date_time": datetime.now(UTC).isoformat()
         }).execute()
         
