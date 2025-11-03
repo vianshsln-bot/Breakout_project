@@ -17,6 +17,7 @@ Usage:
 
 from hashlib import sha256
 import hmac
+import json
 import time
 from typing import Any, Dict, Optional, List, BinaryIO
 import os
@@ -963,13 +964,13 @@ if __name__ == "__main__":
     
     Run with: python eleven_labs.py
     
-    # """
-    # client = ElevenLabsClient()
+    """
+    client = ElevenLabsClient()
     # client.test()
-    # print("=" * 80)
-    # print("ElevenLabs SDK Wrapper - Comprehensive Test Suite")
-    # print("=" * 80)
-    
+    print("=" * 80)
+    print("ElevenLabs SDK Wrapper - Comprehensive Test Suite")
+    print("=" * 80)
+    print(json.dumps(client.get_conversation("conv_8301k92ccc2cf37r4cacfvq5ndgs"),indent=2))
     # try:
     #     # Initialize client
     #     print("\n[1] Initializing client...")

@@ -1202,7 +1202,7 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
 
 
 # Test the extraction
-if __name__ == "__main__":
+# if __name__ == "__main__":
     print("="*80)
     print("🧪 TESTING CALL ANALYSIS EXTRACTION (0-1 RANGE)")
     print("="*80)
@@ -1317,8 +1317,8 @@ if __name__ == "__main__":
         print("📋 CALL TABLE DATA:")
         print(f"  conv_id: {result['conv_id']}")
         print(f"  call_intent: {result['summary']}")
-        print(f"  duration: {result['duration']} seconds")
-        print(f"  cost: {result['cost']} creds")
+        print(f"  duration: {result['duration']} seconds {type(result['duration'])}")
+        print(f"  cost: {result['cost']} creds {type(result['cost'])}")
         print(f"  status: {result['status']}")
         
         print("\n📊 CALL_ANALYSIS TABLE DATA:")
