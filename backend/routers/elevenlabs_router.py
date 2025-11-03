@@ -971,11 +971,13 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
         customer_id_data = collected_data.get("customer_id",{})
         customer_id = customer_id_data.get("value")
 
+        call_intent_data= collected_data.get("call_intent",{})
+        call_intent = call_intent_data.get("value") 
+
         # Metadata - safe extraction with defaults
         call_duration = metadata.get("call_duration_secs", 0) if metadata else 0
         cost = metadata.get("cost", 0) if metadata else 0
         summary = analysis.get("transcript_summary", "") if analysis else ""
-        call_intent= analysis.get("call_summary_title") if analysis else ""
         
         # Safe normalization for sentiment_score (0.0-1.0 range)
         if sentiment_score is not None and isinstance(sentiment_score, (int, float)):
