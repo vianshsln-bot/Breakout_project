@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime 
 class CallBase(BaseModel):
     """Base schema for a call record."""
-    customer_id: int = Field(..., description="Foreign key for the customer making the call.", example=201)
+    customer_id: Optional[str] = Field(..., description="Foreign key for the customer making the call.", example=201)
     transcript: Optional[str] = Field(None, description="The full transcript of the call.")
     date_time: datetime = Field(..., description="The time the call was made.", example="2025-10-04T14:30:00Z")
     duration: Optional[int] = Field(None, gt=0, description="Duration of the call in seconds.", example=375.5)
