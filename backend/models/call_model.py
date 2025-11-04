@@ -8,7 +8,7 @@ class CallBase(BaseModel):
     date_time: datetime = Field(..., description="The time the call was made.", example="2025-10-04T14:30:00Z")
     duration: Optional[int] = Field(None, gt=0, description="Duration of the call in seconds.", example=375.5)
     call_intent: Optional[str] = Field(None, max_length=100, description="The detected intent of the call.", example="New Booking Inquiry")
-    credits_consumed: Optional[float] = Field(None, ge=0, description="Credits or cost consumed by the call.", example=1.25)
+    credits_consumed: Optional[int] = Field(None, ge=0, description="Credits or cost consumed by the call.", example=1.25)
 
 class CallCreate(CallBase):
     """Schema for creating a new call record. The conv_id is provided here."""
@@ -17,9 +17,9 @@ class CallCreate(CallBase):
 class CallUpdate(BaseModel):
     """Schema for updating a call record. All fields are optional."""
     transcript: Optional[str] = None
-    duration: Optional[float] = Field(None, gt=0)
+    duration: Optional[int] = Field(None, gt=0)
     call_intent: Optional[str] = Field(None, max_length=100)
-    credits_consumed: Optional[float] = Field(None, ge=0)
+    credits_consumed: Optional[int] = Field(None, ge=0)
 
 class Call(CallBase):
     """Schema for representing a call record from the database, including the primary key."""

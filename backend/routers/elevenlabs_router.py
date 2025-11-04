@@ -24,7 +24,7 @@ from enum import Enum
 from io import BytesIO
 import json
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Query, Body, UploadFile, File
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Any, Dict, Optional, List
 import os
 
@@ -58,12 +58,39 @@ def get_client() -> ElevenLabsClient:
 
 # ================== PYDANTIC MODELS ==================
 
+class TTSModelId(str, Enum):
+    """Allowed TTS model IDs"""
+    eleven_turbo_v2 = "eleven_turbo_v2"
+    eleven_flash_v2 = "eleven_flash_v2"
+    eleven_multilingual_v2 = "eleven_multilingual_v2"
+
+
+class TTSConfig(BaseModel):
+    """TTS configuration model"""
+    model_id: TTSModelId = Field(..., description="TTS model ID")
+    voice_id: str = Field(..., description="Voice ID")
+
+
 class AgentCreateRequest(BaseModel):
     """Request model for creating an agent"""
     name: str = Field(..., description="Agent name")
     conversation_config: Dict[str, Any] = Field(..., description="Agent conversation configuration")
     tags: Optional[List[str]] = Field(None, description="Tags for organization")
     # description: Optional[str] = Field(None, description="Agent description")
+
+    @field_validator('conversation_config')
+    @classmethod
+    def validate_tts_model(cls, v):
+        """Validate that TTS model_id is one of the allowed values"""
+        if 'tts' in v and 'model_id' in v['tts']:
+            model_id = v['tts']['model_id']
+            allowed_models = [model.value for model in TTSModelId]
+            if model_id not in allowed_models:
+                raise ValueError(
+                    f"Invalid TTS model_id: {model_id}. "
+                    f"Allowed values: {', '.join(allowed_models)}"
+                )
+        return v
 
     class Config:
         json_schema_extra = {
@@ -80,7 +107,7 @@ class AgentCreateRequest(BaseModel):
                         "language": "en"
                     },
                     "tts": {
-                        "model_id": "eleven_turbo_v2_5",
+                        "model_id": "eleven_turbo_v2",
                         "voice_id": "cjVigY5qzO86Huf0OWal"
                     }
                 },
@@ -95,6 +122,20 @@ class AgentUpdateRequest(BaseModel):
     conversation_config: Optional[Dict[str, Any]] = Field(None, description="Updated conversation config")
     tags: Optional[List[str]] = Field(None, description="Updated tags")
     # description: Optional[str] = Field(None, description="Updated description")
+
+    @field_validator('conversation_config')
+    @classmethod
+    def validate_tts_model(cls, v):
+        """Validate that TTS model_id is one of the allowed values"""
+        if v and 'tts' in v and 'model_id' in v['tts']:
+            model_id = v['tts']['model_id']
+            allowed_models = [model.value for model in TTSModelId]
+            if model_id not in allowed_models:
+                raise ValueError(
+                    f"Invalid TTS model_id: {model_id}. "
+                    f"Allowed values: {', '.join(allowed_models)}"
+                )
+        return v
 
 
 class KBFromURLRequest(BaseModel):
@@ -126,6 +167,7 @@ class SecretCreateRequest(BaseModel):
 class ModelName(str, Enum):
     e5_mistral_7b_instruct = "e5_mistral_7b_instruct"
     multilingual_e5_large_instruct = "multilingual_e5_large_instruct"
+
 
 # ================== AGENTS ENDPOINTS ==================
 

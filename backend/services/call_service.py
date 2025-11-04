@@ -31,7 +31,7 @@ def get_call_by_conv_id(conv_id: str) -> Optional[Call]:
         print(f"Error fetching call by conv_id {conv_id}: {e.message}")
         return None
 
-def get_calls_by_customer_id(customer_id: int) -> List[Call]:
+def get_calls_by_customer_id(customer_id: str) -> List[Call]:
     """Retrieves all calls for a specific customer."""
     try:
         response = supabase.table("call").select("*").eq("customer_id", customer_id).execute()
