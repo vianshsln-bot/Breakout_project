@@ -1016,6 +1016,12 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
         call_intent_data= collected_data.get("call_intent",{})
         call_intent = call_intent_data.get("value") 
 
+        caller_name_data= collected_data.get("caller_name",{})
+        caller_name = caller_name_data.get("value") 
+
+        caller_number_data= collected_data.get("caller_number",{})
+        caller_number = caller_number_data.get("value") 
+
         # Metadata - safe extraction with defaults
         call_duration = metadata.get("call_duration_secs", 0) if metadata else 0
         cost = metadata.get("cost", 0) if metadata else 0
@@ -1059,7 +1065,9 @@ def extract_call_analysis(webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
             "status": data.get("status"),
             "customer_type": customer_type,
             "customer_id":customer_id,
-            "call_intent":call_intent
+            "call_intent":call_intent,
+            "caller_name":caller_name,
+            "caller_number":caller_number
         }
         
     except Exception as e:
@@ -1151,7 +1159,9 @@ async def elevenlabs_webhook(request: Request, client: ElevenLabsClient = Depend
             "duration" : call_analysis.get("duration"),
             "call_intent":call_analysis.get("call_intent"),
             "credits_consumed":call_analysis.get("cost"),
-            "date_time": datetime.now(UTC).isoformat()
+            "date_time": datetime.now(UTC).isoformat(),
+            "caller_name" : call_analysis.get("caller_name"),
+            "caller_number": call_analysis.get("caller_number")
         }).execute()
         
         if not call_response.data:
