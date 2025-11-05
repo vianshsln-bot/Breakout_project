@@ -17,7 +17,7 @@ def get_all_calls(skip: int = 0, limit: int = 100) -> List[Call]:
     """Retrieves a list of all calls."""
     try:
         response = supabase.table("call").select("*").order("date_time", desc=True).range(skip, skip + limit - 1).execute()
-        print(response)
+        # print(response)
         return [Call(**item) for item in response.data] if response.data else []
     except APIError as e:
         raise e

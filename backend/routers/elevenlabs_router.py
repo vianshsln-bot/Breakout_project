@@ -19,6 +19,7 @@ Usage:
     app.include_router(router, prefix="/elevenlabs", tags=["ElevenLabs"])
 """
 
+import asyncio
 from datetime import UTC, datetime
 from enum import Enum
 from io import BytesIO
@@ -180,20 +181,14 @@ class ModelName(str, Enum):
 async def list_agents(
     page_size: Optional[int] = Query(None, description="Number of agents per page"),
     cursor: Optional[str] = Query(None, description="Pagination cursor"),
-    client: ElevenLabsClient = Depends(get_client),
+    client=Depends(get_client),
 ):
     """
     List all agents with pagination support.
-    
-    Args:
-        page_size: Number of agents to return per page
-        cursor: Pagination cursor from previous response
-        
-    Returns:
-        Dictionary containing agents list and pagination info
     """
     try:
-        return client.list_agents(page_size=page_size, cursor=cursor)
+        # Offload the blocking SDK call
+        return await asyncio.to_thread(client.list_agents, page_size=page_size, cursor=cursor)
     except ElevenLabsError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
     except Exception as e:
@@ -209,29 +204,24 @@ async def list_agents(
 )
 async def create_agent(
     req: AgentCreateRequest,
-    client: ElevenLabsClient = Depends(get_client),
+    client=Depends(get_client),
 ):
     """
     Create a new agent with conversation configuration.
-    
-    Args:
-        req: Agent creation request with name, conversation_config, tags, description
-        
-    Returns:
-        Created agent object with agent_id
     """
     try:
-        return client.create_agent(
+        # Offload the blocking SDK call
+        return await asyncio.to_thread(
+            client.create_agent,
             name=req.name,
             conversation_config=req.conversation_config,
-            tags=req.tags
+            tags=req.tags,
         )
     except ElevenLabsError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-
+    
 @router.get(
     "/agents/{agent_id}",
     tags=["Agents"],
@@ -346,7 +336,6 @@ async def list_kb_documents(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-
 @router.post(
     "/knowledge-base/from-url",
     tags=["Knowledge Base"],
@@ -357,17 +346,9 @@ async def create_kb_document_from_url(
     req: KBFromURLRequest,
     client: ElevenLabsClient = Depends(get_client),
 ):
-    """
-    Create knowledge base document from URL.
-    
-    Args:
-        req: Request with URL, name, and description
-        
-    Returns:
-        Created document object
-    """
     try:
-        return client.create_knowledge_base_document_from_url(
+        return await asyncio.to_thread(
+            client.create_knowledge_base_document_from_url,
             url=req.url,
             name=req.name
         )
@@ -387,17 +368,9 @@ async def create_kb_document_from_text(
     req: KBFromTextRequest,
     client: ElevenLabsClient = Depends(get_client),
 ):
-    """
-    Create knowledge base document from text.
-    
-    Args:
-        req: Request with text, name
-        
-    Returns:
-        Created document object
-    """
     try:
-        return client.create_knowledge_base_document_from_text(
+        return await asyncio.to_thread(
+            client.create_knowledge_base_document_from_text,
             text=req.text,
             name=req.name
         )
@@ -419,19 +392,8 @@ async def create_kb_document_from_file(
     name: Optional[str] = Query(None, description="Document name"),
     client: ElevenLabsClient = Depends(get_client),
 ):
-    """
-    Create knowledge base document from uploaded file.
-    
-    Args:
-        file: Uploaded file
-        name: Document name
-        
-    Returns:
-        Created document object
-    """
     content = await file.read()
 
-    # Ensure correct type
     allowed_types = [
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -446,11 +408,15 @@ async def create_kb_document_from_file(
                      f"Allowed types are {allowed_types}"
         }
 
-    # Wrap file content in BytesIO for ElevenLabs
     buffer = BytesIO(content)
-    buffer.name = file.filename  
-    response = client.create_knowledge_base_document_from_file(buffer,buffer.name)
-    
+    buffer.name = file.filename
+
+    response = await asyncio.to_thread(
+        client.create_knowledge_base_document_from_file,
+        buffer,
+        buffer.name
+    )
+
     return {"message": "Uploaded successfully", "response": response}
 
 @router.get(

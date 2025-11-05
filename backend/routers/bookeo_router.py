@@ -601,7 +601,7 @@ def refresh_payments(
         if start_time:
             params["startTime"] = start_time
         params["endTime"] = end_time
-        print(params)
+        # print(params)
         try:
             payload = bookeo._make_request("GET", "/payments", params=params)
         except Exception as e:
