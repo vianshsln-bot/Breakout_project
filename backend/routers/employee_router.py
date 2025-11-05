@@ -44,14 +44,31 @@ def update_employee(user_id: str, payload: EmployeeUpdate, svc: EmployeeService 
     except DatabaseError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable")
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_employee(user_id: str, svc: EmployeeService = Depends(get_employee_service)) -> None:
+@router.delete("/{user_id}")
+def delete_employee(user_id: str, svc: EmployeeService = Depends(get_employee_service)):
     try:
-        svc.delete_employee(user_id)
-        return
+        success, message = svc.delete_employee(user_id)
+
+        if not success:
+            # Return 400 if user cannot be deleted (bad request)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=message
+            )
+
+        # If success, return 204 (no content)
+        return {"detail": message}
+
+    except HTTPException:
+        # Let already-raised HTTPExceptions pass through
+        raise
+
     except Exception as e:
-        print(e)
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable")
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Service unavailable: {str(e)}"
+        )
 
 @router.post("/validate", response_model=ValidationResponse, status_code=status.HTTP_200_OK)
 def validate_employee(payload: ValidationRequest, svc: EmployeeService = Depends(get_employee_service)) -> ValidationResponse:

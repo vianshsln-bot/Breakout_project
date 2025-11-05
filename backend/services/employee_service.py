@@ -193,17 +193,34 @@ class EmployeeService:
             raise DatabaseError("Employee not found")
         return EmployeeOut(**row)
 
-
-    def delete_employee(self, user_id: str) -> bool:
+    def delete_employee(self, user_id: str) -> tuple[bool, str]:
         try:
+            # Fetch role from employee table
+            result = self.client.table("employee").select("role").eq("id", user_id).execute()
+    
+            # If no employee found, treat as invalid or already deleted
+            if not result.data:
+                return False, "User not found in employee table."
+    
+            role = result.data[0].get("role")
+    
+            # Only employees can be deleted
+            if role.lower() != "employee":
+                return False, "Only employees can be deleted. Admin accounts cannot be removed."
+    
+            # Proceed with deletion from Supabase Auth
             self.client.auth.admin.delete_user(user_id)
-            return True
+            return True, "Employee deleted successfully."
+    
+        except PermissionError as e:
+            return False, f"Permission denied: {e}"
+    
         except Exception as e:
             msg = str(e).lower()
-            # Treat not-found as idempotent success
-            print(e)
+            print(f"Error deleting user: {e}")
+    
+            # Treat 'not found' as idempotent success
             if "not found" in msg or "no user" in msg:
-                return True
-            raise DatabaseError("Auth delete failed.") from e
-
-     
+                return True, "User not found in auth — treated as already deleted."
+    
+            return False, f"Auth delete failed: {e}"
