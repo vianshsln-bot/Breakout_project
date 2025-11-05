@@ -44,14 +44,14 @@ def update_employee(user_id: str, payload: EmployeeUpdate, svc: EmployeeService 
     except DatabaseError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable")
 
-# @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-# def delete_employee(user_id: str, svc: EmployeeService = Depends(get_employee_service)) -> None:
-#     try:
-#         svc.delete_employee(user_id, cascade_auth=True)
-#         return
-#     except Exception as e:
-#         print(e)
-#         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable")
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_employee(user_id: str, svc: EmployeeService = Depends(get_employee_service)) -> None:
+    try:
+        svc.delete_employee(user_id)
+        return
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable")
 
 @router.post("/validate", response_model=ValidationResponse, status_code=status.HTTP_200_OK)
 def validate_employee(payload: ValidationRequest, svc: EmployeeService = Depends(get_employee_service)) -> ValidationResponse:

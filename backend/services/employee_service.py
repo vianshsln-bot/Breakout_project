@@ -194,22 +194,16 @@ class EmployeeService:
         return EmployeeOut(**row)
 
 
-    # def delete_employee(self, user_id: str, cascade_auth: bool = True) -> bool:
-    #     if cascade_auth:
-    #         # Preferred: delete identity so FK ON DELETE CASCADE removes employee row
-    #         try:
-    #             self.client.auth.admin.delete_user(user_id)
-    #             return True
-    #         except Exception as e:
-    #             msg = str(e).lower()
-    #             # Treat not-found as idempotent success
-    #             if "not found" in msg or "no user" in msg:
-    #                 return True
-    #             raise DatabaseError("Auth delete failed.") from e
+    def delete_employee(self, user_id: str) -> bool:
+        try:
+            self.client.auth.admin.delete_user(user_id)
+            return True
+        except Exception as e:
+            msg = str(e).lower()
+            # Treat not-found as idempotent success
+            print(e)
+            if "not found" in msg or "no user" in msg:
+                return True
+            raise DatabaseError("Auth delete failed.") from e
 
-    #     # Optional branch: only remove employee row (identity remains)
-    #     try:
-    #         self.client.table(self.table_name).delete().eq("id", user_id).execute()
-    #         return True
-    #     except Exception as e:
-    #         raise DatabaseError("Employee delete failed.") from e
+     
