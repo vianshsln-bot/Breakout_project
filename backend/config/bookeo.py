@@ -350,9 +350,9 @@ class BookeoAPI:
 
         if previous_hold_id:
             params['previousHoldId'] = previous_hold_id
-        print(params)
-        print("\n\n")
-        print(booking_data)
+        # print(params)
+        # print("\n\n")
+        # print(booking_data)
         return self._make_request('POST', '/bookings', params=params, data=booking_data)
 
     def get_booking(self, booking_id: str, expand: bool = False, lang: str = "en-US") -> Dict:
@@ -692,7 +692,7 @@ class BookeoAPI:
             booking_product_id = (payu_payload.get("udf4") or "").strip()
             booking_participants = json.loads(payu_payload.get("udf5") or "[]")
 
-            print("Booking details from UDFs:", booking_hold_number, booking_event_id, booking_customer_id, booking_participants, booking_product_id, sep="\n", end="\n")
+            # print("Booking details from UDFs:", booking_hold_number, booking_event_id, booking_customer_id, booking_participants, booking_product_id, sep="\n", end="\n")
 
             
             
@@ -962,7 +962,7 @@ if __name__ == "__main__":
             break
     if not product_id:
         raise RuntimeError("Could not extract product id from products response")
-    print(f"Chosen product_id={product_id}")
+    # print(f"Chosen product_id={product_id}")
 
     print("\n=== Step 2: Discover an event (slot) in next 7 days ===")
     start = datetime.now()

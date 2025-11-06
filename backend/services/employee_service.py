@@ -19,7 +19,7 @@ class ValidationError(Exception):
         super().__init__(detail)
 
 class EmployeeService:
-    def __init__(self, client: Any, table_name: str = "employee"):
+    def __init__(self, client: Any, table_name: str = "user"):
         self.client = client
         self.table_name = table_name
 

@@ -8,7 +8,7 @@ from backend.config.supabase_client import supabase
 router = APIRouter(prefix="/employees", tags=["employees"])
 
 def get_employee_service() -> EmployeeService:
-    return EmployeeService(client=supabase, table_name="employee")
+    return EmployeeService(client=supabase, table_name="user")
 
 
 @router.get("", response_model=List[EmployeeOut], status_code=status.HTTP_200_OK)
