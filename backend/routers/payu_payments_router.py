@@ -25,28 +25,6 @@ def get_bookeo_client() -> BookeoAPI:
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
-
-# @router.post(
-#     "/create-link",
-#     response_model=PaymentLinkResponse,       # ← return full response model
-#     status_code=status.HTTP_201_CREATED,
-#     summary="Create Payment Link"
-# )
-# async def create_payment_link(
-#     request: PaymentLinkRequest,
-#     payu: PayUManager = Depends(get_payu_client)
-# ) -> PaymentLinkResponse:
-#     try:
-#         # This returns the full PayU API response, including status/message/result
-#         return payu.create_payment_link(request)
-#     except PayUAPIError as e:
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=str(e)
-#         )
-    
-
-
 @router.get(
     "/transaction-details",
     response_model=TransactionPage,
@@ -126,6 +104,5 @@ async def payu_webhook(request: Request) -> Response:
     if computed != received:
         return Response(content="invalid signature", status_code=status.HTTP_400_BAD_REQUEST)
     return Response(content="ok", status_code=status.HTTP_200_OK)
-
 
 

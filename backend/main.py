@@ -5,9 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import reminder
 from backend.models.followup_model import FollowUp
 from backend.routers import branch_router, call_analysis_router, \
-call_router, customer_router, dashboard_router, employee_router,\
-booking_router, event_router, lead_router, payment_router, payu_payments_router, theme_router, compute_router2,bookeo_router,\
-analysis_router2, elevenlabs_router,analysis_combined_kpi_router
+call_router, customer_router, dashboard_router, booking_router, event_router, lead_router, payment_router, payu_payments_router, theme_router, compute_router2,bookeo_router,\
+analysis_router2, elevenlabs_router,analysis_combined_kpi_router, user_router
 from backend.routers.archived_routers import analysis_router, consumption_router, followup_router, linktracker_router, scripts_router, slot_router
 
 
@@ -63,7 +62,7 @@ app.include_router(branch_router.router)
 app.include_router(call_analysis_router.router)
 app.include_router(call_router.router)
 app.include_router(customer_router.router)
-app.include_router(employee_router.router)
+app.include_router(user_router.router)
 app.include_router(payment_router.router)
 app.include_router(theme_router.router)
 

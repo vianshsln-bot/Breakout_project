@@ -2,11 +2,11 @@
 import logging
 import time
 from typing import Any, Dict, List, Optional
-from backend.models.employee_model import EmployeeCreate, EmployeeOut, ValidationRequest, EmployeeUpdate, ValidationResponse
+from backend.models.user_model import UserCreate, UserOut, ValidationRequest, UserUpdate, ValidationResponse
 from fastapi import HTTPException, status 
 
 
-logger = logging.getLogger("employee_service")
+logger = logging.getLogger("user_service")
 
 class DatabaseError(Exception):
 
@@ -18,12 +18,12 @@ class ValidationError(Exception):
         self.code = code
         super().__init__(detail)
 
-class EmployeeService:
+class UserService:
     def __init__(self, client: Any, table_name: str = "user"):
         self.client = client
         self.table_name = table_name
 
-    def _select_employee(self, user_id: str) -> Dict[str, Any]:
+    def _select_user(self, user_id: str) -> Dict[str, Any]:
         resp = (
             self.client
             .table(self.table_name)
@@ -48,7 +48,7 @@ class EmployeeService:
         return len(rows) == 1
     
     
-    def list_employees(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    def list_users(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         resp = (
             self.client
             .table(self.table_name)
@@ -59,7 +59,7 @@ class EmployeeService:
         )
         return getattr(resp, "data", []) or []
 
-    def get_employee_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         resp = (
             self.client
             .table(self.table_name)
@@ -71,7 +71,7 @@ class EmployeeService:
         )
         return getattr(resp, "data", None)
 
-    def create_employee_with_role(self, payload: EmployeeCreate) -> EmployeeOut:
+    def create_user_with_role(self, payload: UserCreate) -> UserOut:
         # 1) Create identity in Supabase Auth
         
         if payload.branch_id is not None and not self._branch_exists(payload.branch_id): 
@@ -107,9 +107,9 @@ class EmployeeService:
         for _ in range(6):  # ~1.5s total
             try:
                 self.client.table(self.table_name).update(update_fields).eq("id", user.id).execute()
-                row = self._select_employee(user.id)
+                row = self._select_user(user.id)
                 if row:
-                    return EmployeeOut(**row)
+                    return UserOut(**row)
             except Exception as e:
                 last_err = e
                 msg = str(e).lower()
@@ -119,8 +119,8 @@ class EmployeeService:
                     raise ValidationError("Email or phone already in use.")
             time.sleep(0.25)
 
-        logger.exception("Employee update/select failed: %s", last_err)
-        raise DatabaseError("Employee record not found after creation.")
+        logger.exception("User update/select failed: %s", last_err)
+        raise DatabaseError("User record not found after creation.")
 
     def validate_credentials(self, payload: ValidationRequest) -> ValidationResponse:
         try:
@@ -139,12 +139,12 @@ class EmployeeService:
         if not user:
             return ValidationResponse(exists=False, reason="Invalid email or password.", is_admin=False)  # generic auth failure [web:9]
 
-        row = self._select_employee(user.id) 
+        row = self._select_user(user.id) 
         role = (row or {}).get("role") or "unassigned"
         is_admin = role.lower() == "admin"
         return ValidationResponse(exists=True, reason="Valid email and password.", is_admin=is_admin)
     
-    def update_employee(self, user_id: str, payload: EmployeeUpdate) -> EmployeeOut:
+    def update_user(self, user_id: str, payload: UserUpdate) -> UserOut:
     # 1) Update identity via Auth (admin context when changing other users)
         auth_updates: Dict[str, Any] = {}
         if payload.email is not None:
@@ -185,22 +185,22 @@ class EmployeeService:
                 # Surface uniqueness violations clearly
                 if "duplicate key value" in msg or "unique constraint" in msg:
                     raise DatabaseError("Email or phone already in use.") from e
-                raise DatabaseError("Employee update failed.") from e
+                raise DatabaseError("User update failed.") from e
     
         # 3) Return fresh view with a minimal projection
-        row = self._select_employee(user_id)
+        row = self._select_user(user_id)
         if not row:
-            raise DatabaseError("Employee not found")
-        return EmployeeOut(**row)
+            raise DatabaseError("user not found")
+        return UserOut(**row)
 
-    def delete_employee(self, user_id: str) -> tuple[bool, str]:
+    def delete_user(self, user_id: str) -> tuple[bool, str]:
         try:
             # Fetch role from employee table
-            result = self.client.table("employee").select("role").eq("id", user_id).execute()
+            result = self.client.table(self.table_name).select("role").eq("id", user_id).execute()
     
             # If no employee found, treat as invalid or already deleted
             if not result.data:
-                return False, "User not found in employee table."
+                return False, "User not found."
     
             role = result.data[0].get("role")
     

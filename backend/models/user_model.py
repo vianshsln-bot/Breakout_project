@@ -1,8 +1,8 @@
-# models/employee_models.py
+# models/User_models.py
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-class EmployeeCreate(BaseModel):
+class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: Optional[str] = None
@@ -10,17 +10,17 @@ class EmployeeCreate(BaseModel):
     branch_id: Optional[int] = None
     role: str = "unassigned"
 
-class EmployeeUpdate(BaseModel):
+class UserUpdate(BaseModel):
     # Identity fields (handled via Auth if present)
     email: Optional[EmailStr] = None
     password: Optional[str] = None
-    # Business fields (handled via employee table)
+    # Business fields (handled via User table)
     name: Optional[str] = None
     phone_number: Optional[str] = None
     branch_id: Optional[int] = None
     role: Optional[str] = None
 
-class EmployeeOut(BaseModel):
+class UserOut(BaseModel):
     id: str
     email: EmailStr
     name: Optional[str] = None
